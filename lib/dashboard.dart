@@ -19,17 +19,12 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
-  static const _statuses = [
-    'Reading',
-    'Completed',
-    'Plan to Read',
-    'On Hold',
-    'Dropped',
-  ];
+  static const _statuses = ['private', 'public'];
 
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _manga = [];
   String _selectedStatus = 'All';
+  bool _showPublic = false;
   bool _isLoading = true;
   String? _loadError;
 
@@ -53,7 +48,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/manga_get.php'),
+        Uri.parse(
+          '${ApiConfig.baseUrl}/manga_get.php${_showPublic ? '?scope=public' : ''}',
+        ),
         headers: {'Authorization': 'Bearer ${widget.user['access_token']}'},
       );
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -84,7 +81,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _addManga() async {
-    final manga = await showDialog<Map<String, String>>(
+    final manga = await showDialog<MangaFormResult>(
       context: context,
       builder: (context) => const AddMangaDialog(),
     );
@@ -97,7 +94,7 @@ class _DashboardPageState extends State<DashboardPage> {
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer ${widget.user['access_token']}',
         },
-        body: jsonEncode(manga),
+        body: jsonEncode(manga.fields),
       );
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -105,6 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
         throw Exception(data['message'] ?? 'เพิ่ม Manga ไม่สำเร็จ');
       }
 
+      if (mounted) setState(() => _showPublic = false);
       await _loadManga();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -135,27 +133,24 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   String _statusLabel(String status) => switch (status) {
-    'Reading' => 'กำลังอ่าน',
-    'Completed' => 'อ่านจบแล้ว',
-    'Plan to Read' => 'วางแผนจะอ่าน',
-    'On Hold' => 'พักไว้ก่อน',
-    'Dropped' => 'เลิกอ่าน',
+    'private' => 'ส่วนตัว',
+    'public' => 'สาธารณะ',
     _ => status,
   };
 
   Color _statusColor(String status) => switch (status) {
-    'Reading' => Colors.teal,
-    'Completed' => Colors.green,
-    'On Hold' => Colors.orange,
-    'Dropped' => Colors.redAccent,
+    'private' => Colors.blueGrey,
+    'public' => Colors.teal,
     _ => Colors.blueGrey,
   };
 
   @override
   Widget build(BuildContext context) {
     final isAdmin = (widget.user['role'] ?? '').toString() == 'admin';
-    final readingCount = _manga
-        .where((item) => item['status'] == 'Reading')
+    final publicCount = _manga
+        .where(
+          (item) => item['status'] == 'public' && item['is_hidden'] != true,
+        )
         .length;
 
     return Scaffold(
@@ -198,12 +193,40 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             const SizedBox(height: 4),
             Text(
-              'ชั้นหนังสือของคุณ',
+              _showPublic ? 'Manga สาธารณะ' : 'ชั้นหนังสือของคุณ',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 20),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: const Text('ของฉัน'),
+                  selected: !_showPublic,
+                  onSelected: (_) {
+                    setState(() {
+                      _showPublic = false;
+                      _selectedStatus = 'All';
+                    });
+                    _loadManga();
+                  },
+                ),
+                ChoiceChip(
+                  label: const Text('สาธารณะ'),
+                  selected: _showPublic,
+                  onSelected: (_) {
+                    setState(() {
+                      _showPublic = true;
+                      _selectedStatus = 'All';
+                    });
+                    _loadManga();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -217,8 +240,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _SummaryTile(
-                    label: 'กำลังอ่าน',
-                    value: '$readingCount',
+                    label: 'สาธารณะ',
+                    value: '$publicCount',
                     icon: Icons.menu_book_outlined,
                     color: Colors.teal,
                   ),
@@ -246,26 +269,27 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              value: _selectedStatus,
-              decoration: const InputDecoration(
-                labelText: 'กรองตามสถานะ',
-                prefixIcon: Icon(Icons.filter_list),
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                const DropdownMenuItem(value: 'All', child: Text('ทุกสถานะ')),
-                ..._statuses.map(
-                  (status) => DropdownMenuItem(
-                    value: status,
-                    child: Text(_statusLabel(status)),
-                  ),
+            if (!_showPublic)
+              DropdownButtonFormField<String>(
+                value: _selectedStatus,
+                decoration: const InputDecoration(
+                  labelText: 'กรองตามสถานะ',
+                  prefixIcon: Icon(Icons.filter_list),
+                  border: OutlineInputBorder(),
                 ),
-              ],
-              onChanged: (value) {
-                if (value != null) setState(() => _selectedStatus = value);
-              },
-            ),
+                items: [
+                  const DropdownMenuItem(value: 'All', child: Text('ทุกสถานะ')),
+                  ..._statuses.map(
+                    (status) => DropdownMenuItem(
+                      value: status,
+                      child: Text(_statusLabel(status)),
+                    ),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _selectedStatus = value);
+                },
+              ),
             const SizedBox(height: 16),
             if (_isLoading)
               const Padding(
@@ -292,7 +316,7 @@ class _DashboardPageState extends State<DashboardPage> {
               )
             else ...[
               Text(
-                'รายการของฉัน (${_visibleManga.length})',
+                '${_showPublic ? 'รายการสาธารณะ' : 'รายการของฉัน'} (${_visibleManga.length})',
                 style: Theme.of(
                   context,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -307,7 +331,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildMangaTile(Map<String, dynamic> manga) {
-    final status = (manga['status'] ?? 'Plan to Read').toString();
+    final status = (manga['status'] ?? 'private').toString();
     final subtitleParts = [
       manga['author'],
       manga['genre'],
@@ -329,8 +353,12 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         subtitle: Text(
           [
+            if (_showPublic) (manga['username'] ?? '').toString(),
             if (subtitleParts.isNotEmpty) subtitleParts.join(' · '),
-            _statusLabel(status),
+            manga['is_hidden'] == true
+                ? 'ถูกซ่อนโดยผู้ดูแล'
+                : _statusLabel(status),
+            '${manga['chapter_count'] ?? 0} ตอน',
           ].join('\n'),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -343,6 +371,7 @@ class _DashboardPageState extends State<DashboardPage> {
               builder: (context) => MangaDetailPage(
                 manga: manga,
                 accessToken: widget.user['access_token'].toString(),
+                canEdit: manga['user_id'] == widget.user['user_id'],
               ),
             ),
           );

@@ -1,16 +1,23 @@
-# lab6
+# MyMangaList
 
-A new Flutter project.
+Flutter app for keeping a Manga list, publishing chapters, and reading public Manga. Users can register, sign in, search and filter, manage their own Manga, and report public Manga. Admins manage users and review reports.
 
-## Getting Started
+## Run on Windows Desktop
 
-This project is a starting point for a Flutter application.
+1. Start the PHP API and MySQL through XAMPP. See the API repository at `C:\xampp\htdocs\mymangalist_api` for database setup.
+2. Check the API URL in `lib/config.dart`. The current value is `http://localhost/mymangalist_api`.
+3. Enable Windows Developer Mode (Flutter plugins need symlink support), then run `flutter pub get` and `flutter run -d windows` from this folder.
 
-A few resources to get you started if this is your first Flutter project:
+Accounts created in the app have the `user` role. Admin access is granted in MySQL, not during registration. The API checks the bearer token and keeps private Manga and editing tied to the owner.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Choose a genre from the searchable list and create a Manga without files. Open its detail page to add chapters over time. Each chapter has a number, optional title, and one PDF or up to 15 images. Image filenames are sorted alphabetically, so use names such as `001.png`, `002.png`. Chapters can stay as drafts or be published. Status `private` is visible only to the owner; `public` Manga and its published chapters can be read by other signed-in users. Owners can edit or delete chapters and replace each chapter's PDF or image set.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Signed-in readers can comment on the whole Manga from its detail page or on a chapter from the reader. A commenter can remove their own comment; the Manga owner can remove comments on their Manga.
+
+When another readable chapter exists, the reader offers **ตอนถัดไป** on the final PDF/page view, or after the last image in vertical scrolling mode. Readers can report a public Manga from its detail page with a written reason. The admin panel shows users, Manga/comment counts, account suspension controls, and a report queue. Admins can open a reported Manga to inspect its published chapters before dismissing the report, hiding or deleting the Manga, or suspending its uploader. Hidden Manga remains available to its owner but is not publicly readable; admins can restore it. Admin roles are still assigned in MySQL only.
+
+In the reader, use the settings button to choose vertical scrolling or one page at a time. The page width starts at 700 px and can be adjusted from 400 to 1200 px, or set to fill the window. In one-page mode, tap the left half to go back or the right half to go forward. Dragging still scrolls a long image. Reader settings apply to the current open chapter.
+
+## Checks
+
+Run `flutter analyze` and `flutter test` after changing Flutter code.

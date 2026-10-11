@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+class MangaFormResult {
+  const MangaFormResult(this.fields);
+
+  final Map<String, String> fields;
+}
+
 class AddMangaDialog extends StatefulWidget {
   const AddMangaDialog({super.key, this.manga});
 
@@ -10,20 +16,34 @@ class AddMangaDialog extends StatefulWidget {
 }
 
 class _AddMangaDialogState extends State<AddMangaDialog> {
-  static const _statuses = [
-    'Reading',
-    'Completed',
-    'Plan to Read',
-    'On Hold',
-    'Dropped',
+  static const _genres = [
+    'Action',
+    'Adventure',
+    'Comedy',
+    'Drama',
+    'Ecchi',
+    'Fantasy',
+    'Horror',
+    'Mahou Shoujo',
+    'Mecha',
+    'Music',
+    'Mystery',
+    'Psychological',
+    'Romance',
+    'Sci-Fi',
+    'Slice of Life',
+    'Sports',
+    'Supernatural',
+    'Thriller',
   ];
 
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _authorController = TextEditingController();
-  final _genreController = TextEditingController();
   final _descriptionController = TextEditingController();
-  String _status = 'Plan to Read';
+  String? _genre;
+  String _status = 'private';
+  String? _selectionError;
 
   @override
   void initState() {
@@ -32,39 +52,88 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
     if (manga == null) return;
     _titleController.text = (manga['title'] ?? '').toString();
     _authorController.text = (manga['author'] ?? '').toString();
-    _genreController.text = (manga['genre'] ?? '').toString();
+    final genre = (manga['genre'] ?? '').toString();
+    if (_genres.contains(genre)) _genre = genre;
     _descriptionController.text = (manga['description'] ?? '').toString();
     final status = (manga['status'] ?? '').toString();
-    if (_statuses.contains(status)) _status = status;
+    if (status == 'public') _status = 'public';
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     _authorController.dispose();
-    _genreController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
 
-  String _statusLabel(String status) => switch (status) {
-    'Reading' => 'กำลังอ่าน',
-    'Completed' => 'อ่านจบแล้ว',
-    'Plan to Read' => 'วางแผนจะอ่าน',
-    'On Hold' => 'พักไว้ก่อน',
-    'Dropped' => 'เลิกอ่าน',
-    _ => status,
-  };
+  Future<void> _chooseGenre() async {
+    String query = '';
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, updateSearch) {
+          final filtered = _genres
+              .where(
+                (genre) => genre.toLowerCase().contains(query.toLowerCase()),
+              )
+              .toList();
+          return AlertDialog(
+            title: const Text('เลือกแนวเรื่อง'),
+            content: SizedBox(
+              width: 400,
+              height: 430,
+              child: Column(
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'ค้นหาแนวเรื่อง',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) => updateSearch(() => query = value),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) => ListTile(
+                        title: Text(filtered[index]),
+                        onTap: () =>
+                            Navigator.pop(dialogContext, filtered[index]),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    if (selected != null && mounted) {
+      setState(() {
+        _genre = selected;
+        _selectionError = null;
+      });
+    }
+  }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    Navigator.pop(context, {
-      'title': _titleController.text.trim(),
-      'author': _authorController.text.trim(),
-      'genre': _genreController.text.trim(),
-      'description': _descriptionController.text.trim(),
-      'status': _status,
-    });
+    if (_genre == null) {
+      setState(() => _selectionError = 'กรุณาเลือกแนวเรื่อง');
+      return;
+    }
+    Navigator.pop(
+      context,
+      MangaFormResult({
+        'title': _titleController.text.trim(),
+        'author': _authorController.text.trim(),
+        'genre': _genre!,
+        'description': _descriptionController.text.trim(),
+        'status': _status,
+      }),
+    );
   }
 
   @override
@@ -101,12 +170,11 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(
-                  controller: _genreController,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'แนวเรื่อง',
-                    border: OutlineInputBorder(),
+                OutlinedButton.icon(
+                  onPressed: _chooseGenre,
+                  icon: const Icon(Icons.search),
+                  label: Text(
+                    _genre == null ? 'เลือกแนวเรื่อง *' : 'แนวเรื่อง: $_genre',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -116,14 +184,10 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                     labelText: 'สถานะ',
                     border: OutlineInputBorder(),
                   ),
-                  items: _statuses
-                      .map(
-                        (status) => DropdownMenuItem(
-                          value: status,
-                          child: Text(_statusLabel(status)),
-                        ),
-                      )
-                      .toList(),
+                  items: const [
+                    DropdownMenuItem(value: 'private', child: Text('ส่วนตัว')),
+                    DropdownMenuItem(value: 'public', child: Text('สาธารณะ')),
+                  ],
                   onChanged: (value) {
                     if (value != null) setState(() => _status = value);
                   },
@@ -139,6 +203,17 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 12),
+                const Text(
+                  'สร้างเรื่องก่อน แล้วเพิ่มไฟล์แยกตามตอนในหน้าเรื่อง',
+                ),
+                if (_selectionError != null)
+                  Text(
+                    _selectionError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
               ],
             ),
           ),

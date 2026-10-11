@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:lab6/add_manga_dialog.dart';
+import 'package:lab6/admin_dashboard.dart';
+import 'package:lab6/chapter_dialog.dart';
 import 'package:lab6/main.dart';
 import 'package:lab6/manga_detail.dart';
 
@@ -32,7 +34,59 @@ void main() {
     expect(find.text('กรุณากรอกชื่อเรื่อง'), findsOneWidget);
   });
 
-  testWidgets('Manga detail shows fields and asks before deletion', (tester) async {
+  testWidgets('Genre list can be searched', (tester) async {
+    MangaFormResult? saved;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                saved = await showDialog<MangaFormResult>(
+                  context: context,
+                  builder: (context) => const AddMangaDialog(),
+                );
+              },
+              child: const Text('เปิดฟอร์ม'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('เปิดฟอร์ม'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('เลือกแนวเรื่อง *'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'ค้นหาแนวเรื่อง'),
+      'Rom',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Romance'), findsOneWidget);
+    expect(find.text('Action'), findsNothing);
+    await tester.tap(find.text('Romance'));
+    await tester.pumpAndSettle();
+    expect(find.text('แนวเรื่อง: Romance'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).first, 'New Manga');
+    await tester.tap(find.text('บันทึก'));
+    await tester.pumpAndSettle();
+    expect(saved?.fields['title'], 'New Manga');
+    expect(saved?.fields['genre'], 'Romance');
+  });
+
+  testWidgets('A new chapter needs a PDF or images', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: ChapterDialog(nextNumber: 1))),
+    );
+    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.text('บันทึก'));
+    await tester.pumpAndSettle();
+    expect(find.text('กรุณาเลือก PDF หรือภาพของตอน'), findsOneWidget);
+  });
+
+  testWidgets('Manga detail shows fields and asks before deletion', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: MangaDetailPage(
@@ -42,7 +96,7 @@ void main() {
             'title': 'Sample Manga',
             'author': 'Sample Author',
             'genre': 'Fantasy',
-            'status': 'Reading',
+            'status': 'private',
             'description': 'Sample description',
           },
         ),
@@ -57,5 +111,31 @@ void main() {
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();
     expect(find.text('Sample Manga'), findsOneWidget);
+  });
+
+  testWidgets('Public Manga cannot be edited by another user', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MangaDetailPage(
+          accessToken: 'test-token',
+          canEdit: false,
+          manga: {'manga_id': 2, 'title': 'Shared Manga', 'status': 'public'},
+        ),
+      ),
+    );
+    expect(find.text('Shared Manga'), findsOneWidget);
+    expect(find.text('แก้ไข'), findsNothing);
+    expect(find.text('ลบ'), findsNothing);
+    expect(find.text('รีพอร์ต Manga'), findsOneWidget);
+  });
+
+  testWidgets('Admin panel shows user and report sections', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AdminDashboardPage(user: {'access_token': 'test-token'}),
+      ),
+    );
+    expect(find.text('ผู้ใช้'), findsOneWidget);
+    expect(find.text('รีพอร์ต'), findsOneWidget);
   });
 }
