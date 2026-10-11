@@ -246,17 +246,14 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
             DropdownButtonFormField<String>(
               value: _release,
               decoration: const InputDecoration(
-                labelText: 'สถานะการ์ตูน',
+                labelText: 'Release status',
                 border: OutlineInputBorder(),
               ),
               items: const [
-                DropdownMenuItem(value: 'all', child: Text('ทุกสถานะ')),
-                DropdownMenuItem(value: 'ongoing', child: Text('กำลังอัปเดต')),
-                DropdownMenuItem(
-                  value: 'hiatus',
-                  child: Text('ช่วงหยุดอัปโหลด'),
-                ),
-                DropdownMenuItem(value: 'completed', child: Text('จบแล้ว')),
+                DropdownMenuItem(value: 'all', child: Text('All')),
+                DropdownMenuItem(value: 'ongoing', child: Text('Ongoing')),
+                DropdownMenuItem(value: 'hiatus', child: Text('Hiatus')),
+                DropdownMenuItem(value: 'completed', child: Text('Completed')),
               ],
               onChanged: (value) => setState(() => _release = value ?? 'all'),
             ),
@@ -265,13 +262,13 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
               DropdownButtonFormField<String>(
                 value: _visibility,
                 decoration: const InputDecoration(
-                  labelText: 'การมองเห็น',
+                  labelText: 'Visibility',
                   border: OutlineInputBorder(),
                 ),
                 items: const [
-                  DropdownMenuItem(value: 'all', child: Text('ทั้งหมด')),
-                  DropdownMenuItem(value: 'private', child: Text('ส่วนตัว')),
-                  DropdownMenuItem(value: 'public', child: Text('สาธารณะ')),
+                  DropdownMenuItem(value: 'all', child: Text('All')),
+                  DropdownMenuItem(value: 'private', child: Text('Private')),
+                  DropdownMenuItem(value: 'public', child: Text('Public')),
                 ],
                 onChanged: (value) =>
                     setState(() => _visibility = value ?? 'all'),

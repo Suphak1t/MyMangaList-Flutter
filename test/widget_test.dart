@@ -13,6 +13,7 @@ import 'package:lab6/admin_dashboard.dart';
 import 'package:lab6/chapter_dialog.dart';
 import 'package:lab6/dashboard.dart';
 import 'package:lab6/main.dart';
+import 'package:lab6/manga_cover.dart';
 import 'package:lab6/manga_detail.dart';
 import 'package:lab6/manga_reader.dart';
 import 'package:lab6/manga_search.dart';
@@ -113,9 +114,9 @@ void main() {
     );
     await tester.tap(find.text('เปิดฟอร์มแก้ไข'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('กำลังอัปเดต'));
+    await tester.tap(find.text('Ongoing'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('ช่วงหยุดอัปโหลด').last);
+    await tester.tap(find.text('Hiatus').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
@@ -131,6 +132,7 @@ void main() {
     await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
     expect(find.text('กรุณาเลือก PDF หรือภาพของตอน'), findsOneWidget);
+    expect(find.textContaining('PDF 1 ไฟล์ ไม่เกิน 20 MB'), findsOneWidget);
   });
 
   testWidgets('Manga detail shows fields and asks before deletion', (
@@ -154,6 +156,14 @@ void main() {
 
     expect(find.text('Sample Manga'), findsOneWidget);
     expect(find.text('Sample description'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.byType(MangaCover)).dx,
+      lessThan(tester.getTopLeft(find.text('Sample Manga')).dx),
+    );
+    expect(
+      tester.getTopLeft(find.text('Sample description')).dy,
+      greaterThan(tester.getTopLeft(find.byType(MangaCover)).dy),
+    );
     await tester.scrollUntilVisible(find.text('ลบ'), 250);
     await tester.tap(find.text('ลบ'));
     await tester.pumpAndSettle();

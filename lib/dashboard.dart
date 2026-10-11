@@ -183,12 +183,6 @@ class _DashboardPageState extends State<DashboardPage> {
     }).toList();
   }
 
-  String _statusLabel(String status) => switch (status) {
-    'private' => 'ส่วนตัว',
-    'public' => 'สาธารณะ',
-    _ => status,
-  };
-
   @override
   Widget build(BuildContext context) {
     final isAdmin = (widget.user['role'] ?? '').toString() == 'admin';
@@ -377,16 +371,16 @@ class _DashboardPageState extends State<DashboardPage> {
               DropdownButtonFormField<String>(
                 value: _selectedStatus,
                 decoration: const InputDecoration(
-                  labelText: 'กรองตามสถานะ',
+                  labelText: 'Visibility',
                   prefixIcon: Icon(Icons.filter_list),
                   border: OutlineInputBorder(),
                 ),
                 items: [
-                  const DropdownMenuItem(value: 'All', child: Text('ทุกสถานะ')),
+                  const DropdownMenuItem(value: 'All', child: Text('All')),
                   ..._statuses.map(
                     (status) => DropdownMenuItem(
                       value: status,
-                      child: Text(_statusLabel(status)),
+                      child: Text(mangaVisibilityLabel(status)),
                     ),
                   ),
                 ],

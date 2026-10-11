@@ -354,6 +354,24 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     );
   }
 
+  Widget _summaryLine(String label, Object? value) {
+    final text = (value ?? '').toString().trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            TextSpan(text: text.isEmpty ? '—' : text),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final readableChapters = _chapters
@@ -368,44 +386,72 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Center(
-            child: MangaCover(
-              manga: _manga,
-              accessToken: widget.accessToken,
-              width: 190,
-              height: 260,
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final coverWidth = constraints.maxWidth < 500 ? 110.0 : 190.0;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      MangaCover(
+                        manga: _manga,
+                        accessToken: widget.accessToken,
+                        width: coverWidth,
+                        height: coverWidth * 1.37,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (_manga['title'] ?? '').toString(),
+                              style: Theme.of(context).textTheme.headlineSmall,
+                            ),
+                            const SizedBox(height: 12),
+                            _summaryLine('ผู้แต่ง', _manga['author']),
+                            _summaryLine(
+                              'แนวเรื่อง',
+                              _manga['genres'] is List
+                                  ? (_manga['genres'] as List).join(', ')
+                                  : _manga['genre'],
+                            ),
+                            _summaryLine(
+                              'Visibility',
+                              _manga['is_hidden'] == true
+                                  ? 'Hidden by admin'
+                                  : mangaVisibilityLabel(_manga['status']),
+                            ),
+                            _summaryLine(
+                              'Release status',
+                              mangaReleaseLabel(_manga['release_status']),
+                            ),
+                            _summaryLine(
+                              'จำนวนตอน',
+                              _loadingChapters
+                                  ? _manga['chapter_count']
+                                  : _chapters.length,
+                            ),
+                            _summaryLine('ผู้อ่าน', _manga['view_count'] ?? 0),
+                            _summaryLine(
+                              'ความนิยม',
+                              '★ ${_manga['rating_average'] ?? 0} / 5 (${_manga['rating_count'] ?? 0} คะแนน)',
+                            ),
+                            if (_manga['username'] != null)
+                              _summaryLine('ผู้เพิ่ม', _manga['username']),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            (_manga['title'] ?? '').toString(),
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
           const SizedBox(height: 20),
-          _field('ผู้แต่ง', _manga['author']),
-          _field(
-            'แนวเรื่อง',
-            _manga['genres'] is List
-                ? (_manga['genres'] as List).join(', ')
-                : _manga['genre'],
-          ),
-          _field(
-            'สถานะ',
-            _manga['is_hidden'] == true
-                ? 'ถูกซ่อนโดยผู้ดูแล'
-                : (_manga['status'] == 'public' ? 'สาธารณะ' : 'ส่วนตัว'),
-          ),
           _field('รายละเอียด', _manga['description']),
-          _field('สถานะการอัปเดต', mangaReleaseLabel(_manga['release_status'])),
-          _field(
-            'จำนวนตอน',
-            _loadingChapters ? _manga['chapter_count'] : _chapters.length,
-          ),
-          _field('ผู้อ่าน', _manga['view_count'] ?? 0),
-          _field(
-            'ความนิยม',
-            '★ ${_manga['rating_average'] ?? 0} / 5 (${_manga['rating_count'] ?? 0} คะแนน)',
-          ),
           if (!widget.canEdit &&
               _manga['status'] == 'public' &&
               _manga['is_hidden'] != true) ...[
@@ -425,8 +471,6 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
               ),
             ),
           ],
-          if (_manga['username'] != null)
-            _field('ผู้เพิ่ม', _manga['username']),
           OutlinedButton.icon(
             onPressed: () => Navigator.push(
               context,

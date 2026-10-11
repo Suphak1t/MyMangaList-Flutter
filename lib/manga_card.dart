@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'manga_cover.dart';
 
 String mangaReleaseLabel(Object? value) => switch (value) {
-  'hiatus' => 'ช่วงหยุดอัปโหลด',
-  'completed' => 'จบแล้ว',
-  _ => 'กำลังอัปเดต',
+  'hiatus' => 'Hiatus',
+  'completed' => 'Completed',
+  _ => 'Ongoing',
 };
+
+String mangaVisibilityLabel(Object? value) =>
+    value == 'public' ? 'Public' : 'Private';
 
 class MangaCard extends StatelessWidget {
   const MangaCard({
@@ -61,7 +64,7 @@ class MangaCard extends StatelessWidget {
                       '${manga['chapter_count'] ?? 0} ตอน · ${mangaReleaseLabel(manga['release_status'])}',
                     ),
                     Text(
-                      '${manga['is_hidden'] == true ? 'ถูกซ่อน' : (manga['status'] == 'public' ? 'สาธารณะ' : 'ส่วนตัว')} · '
+                      '${manga['is_hidden'] == true ? 'Hidden' : mangaVisibilityLabel(manga['status'])} · '
                       'ผู้อ่าน ${manga['view_count'] ?? 0} · ★ $rating (${manga['rating_count'] ?? 0})',
                       maxLines: 2,
                     ),

@@ -64,11 +64,21 @@ class _ChapterDialogState extends State<ChapterDialog> {
     if (picked == null || !mounted) return;
     final files = picked.files.toList()
       ..sort((a, b) => a.name.compareTo(b.name));
+    final maxFileSize = (type == 'pdf' ? 20 : 5) * 1024 * 1024;
+    final totalSize = files.fold<int>(0, (total, file) => total + file.size);
     setState(() {
       _contentType = type;
       _files = files;
       _fileError = files.any((file) => file.path == null)
           ? 'อ่านไฟล์ที่เลือกไม่ได้'
+          : files.length > (type == 'pdf' ? 1 : 15)
+          ? 'เลือกภาพได้สูงสุด 15 ไฟล์'
+          : files.any((file) => file.size > maxFileSize)
+          ? type == 'pdf'
+                ? 'PDF ต้องไม่เกิน 20 MB'
+                : 'ภาพแต่ละไฟล์ต้องไม่เกิน 5 MB'
+          : totalSize > 30 * 1024 * 1024
+          ? 'ขนาดไฟล์รวมต้องไม่เกิน 30 MB'
           : null;
     });
   }
@@ -80,6 +90,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
       return;
     }
     if (_files.any((file) => file.path == null)) return;
+    if (_fileError != null) return;
     Navigator.pop(
       context,
       ChapterFormResult(
@@ -133,7 +144,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
                 onChanged: (value) => setState(() => _published = value),
               ),
               const Text(
-                'ไฟล์ของตอน: PDF 1 ไฟล์ หรือภาพ JPG, PNG, WebP สูงสุด 15 ไฟล์',
+                'ไฟล์ของตอน: PDF 1 ไฟล์ ไม่เกิน 20 MB หรือภาพ JPG, PNG, WebP สูงสุด 15 ไฟล์ (ไม่เกิน 5 MB ต่อภาพ และรวมไม่เกิน 30 MB)',
               ),
               const Text('ตั้งชื่อภาพตามลำดับ เช่น 001.png, 002.png'),
               const SizedBox(height: 8),

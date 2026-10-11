@@ -28,6 +28,7 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
   String _status = 'private';
   String _releaseStatus = 'ongoing';
   PlatformFile? _coverFile;
+  String? _coverError;
   String? _selectionError;
 
   @override
@@ -128,12 +129,19 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
     );
     if (result != null && mounted) {
-      setState(() => _coverFile = result.files.single);
+      final file = result.files.single;
+      setState(() {
+        _coverError = file.size > 5 * 1024 * 1024
+            ? 'ภาพปกต้องไม่เกิน 5 MB'
+            : null;
+        _coverFile = _coverError == null ? file : null;
+      });
     }
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    if (_coverError != null) return;
     if (_selectedGenres.isEmpty) {
       setState(() => _selectionError = 'กรุณาเลือกแนวเรื่อง');
       return;
@@ -205,12 +213,12 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                 DropdownButtonFormField<String>(
                   value: _status,
                   decoration: const InputDecoration(
-                    labelText: 'สถานะ',
+                    labelText: 'Visibility',
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'private', child: Text('ส่วนตัว')),
-                    DropdownMenuItem(value: 'public', child: Text('สาธารณะ')),
+                    DropdownMenuItem(value: 'private', child: Text('Private')),
+                    DropdownMenuItem(value: 'public', child: Text('Public')),
                   ],
                   onChanged: (value) {
                     if (value != null) setState(() => _status = value);
@@ -221,21 +229,18 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                   DropdownButtonFormField<String>(
                     value: _releaseStatus,
                     decoration: const InputDecoration(
-                      labelText: 'สถานะการอัปเดต',
+                      labelText: 'Release status',
                       border: OutlineInputBorder(),
                     ),
                     items: const [
                       DropdownMenuItem(
                         value: 'ongoing',
-                        child: Text('กำลังอัปเดต'),
+                        child: Text('Ongoing'),
                       ),
-                      DropdownMenuItem(
-                        value: 'hiatus',
-                        child: Text('ช่วงหยุดอัปโหลด'),
-                      ),
+                      DropdownMenuItem(value: 'hiatus', child: Text('Hiatus')),
                       DropdownMenuItem(
                         value: 'completed',
-                        child: Text('จบแล้ว'),
+                        child: Text('Completed'),
                       ),
                     ],
                     onChanged: (value) {
@@ -248,9 +253,17 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                   onPressed: _chooseCover,
                   icon: const Icon(Icons.image_outlined),
                   label: Text(
-                    _coverFile?.name ?? 'เลือกภาพปก (JPG, PNG, WebP)',
+                    _coverFile?.name ??
+                        'เลือกภาพปก (JPG, PNG, WebP · ไม่เกิน 5 MB)',
                   ),
                 ),
+                if (_coverError != null)
+                  Text(
+                    _coverError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _descriptionController,

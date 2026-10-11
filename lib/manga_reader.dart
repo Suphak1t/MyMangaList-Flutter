@@ -321,6 +321,22 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
             height: constraints.maxHeight,
             child: PdfView(
               controller: _pdfController!,
+              renderer: (page) {
+                // pdfx normally renders at 2x as JPEG, which blurs small text.
+                // Keep large pages within a reasonable memory budget.
+                final scale = math.min(
+                  3.0,
+                  math.min(
+                    8192 / math.max(page.width, page.height),
+                    math.sqrt(12000000 / (page.width * page.height)),
+                  ),
+                );
+                return page.render(
+                  width: page.width * scale,
+                  height: page.height * scale,
+                  format: PdfPageImageFormat.png,
+                );
+              },
               scrollDirection: _singlePage ? Axis.horizontal : Axis.vertical,
               pageSnapping: _singlePage,
               onDocumentLoaded: (document) {
