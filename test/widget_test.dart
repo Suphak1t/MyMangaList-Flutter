@@ -11,9 +11,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lab6/add_manga_dialog.dart';
 import 'package:lab6/admin_dashboard.dart';
 import 'package:lab6/chapter_dialog.dart';
+import 'package:lab6/dashboard.dart';
 import 'package:lab6/main.dart';
 import 'package:lab6/manga_detail.dart';
 import 'package:lab6/manga_reader.dart';
+import 'package:lab6/manga_search.dart';
 import 'package:lab6/theme_mode.dart';
 
 void main() {
@@ -205,6 +207,45 @@ void main() {
       ),
     );
     expect(find.text('ตอนก่อนหน้า'), findsOneWidget);
+  });
+
+  testWidgets('Search genres include categories without uploaded Manga', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MangaSearchPage(user: {'access_token': 'test-token'}),
+      ),
+    );
+    await tester.tap(find.text('ประเภทการ์ตูน: ทุกแนว'));
+    await tester.pumpAndSettle();
+    expect(find.text('Action'), findsOneWidget);
+    expect(find.text('Adventure'), findsOneWidget);
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Action'));
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Adventure'));
+    await tester.tap(find.text('เสร็จ'));
+    await tester.pumpAndSettle();
+    expect(find.text('ประเภทการ์ตูน: เลือก 2 แนว'), findsOneWidget);
+  });
+
+  testWidgets('Dashboard keeps local search only in My Manga', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DashboardPage(
+          user: {
+            'access_token': 'test-token',
+            'user_id': 1,
+            'username': 'Tester',
+          },
+        ),
+      ),
+    );
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('ไปหน้าค้นหาและกรอง Manga'), findsNothing);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'สาธารณะ'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('ไปหน้าค้นหาและกรอง Manga'), findsOneWidget);
   });
 
   testWidgets('Theme can switch to dark mode', (tester) async {

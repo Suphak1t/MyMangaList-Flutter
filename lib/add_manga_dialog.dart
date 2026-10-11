@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'genre_options.dart';
+
 class MangaFormResult {
   const MangaFormResult(this.fields, this.coverFile);
 
@@ -18,27 +20,6 @@ class AddMangaDialog extends StatefulWidget {
 }
 
 class _AddMangaDialogState extends State<AddMangaDialog> {
-  static const _genres = [
-    'Action',
-    'Adventure',
-    'Comedy',
-    'Drama',
-    'Ecchi',
-    'Fantasy',
-    'Horror',
-    'Mahou Shoujo',
-    'Mecha',
-    'Music',
-    'Mystery',
-    'Psychological',
-    'Romance',
-    'Sci-Fi',
-    'Slice of Life',
-    'Sports',
-    'Supernatural',
-    'Thriller',
-  ];
-
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _authorController = TextEditingController();
@@ -59,7 +40,7 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
     final genres = manga['genres'] is List
         ? (manga['genres'] as List).map((value) => value.toString())
         : [(manga['genre'] ?? '').toString()];
-    _selectedGenres.addAll(genres.where(_genres.contains));
+    _selectedGenres.addAll(genres.where(mangaGenres.contains));
     _descriptionController.text = (manga['description'] ?? '').toString();
     final status = (manga['status'] ?? '').toString();
     if (status == 'public') _status = 'public';
@@ -83,7 +64,7 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, updateSearch) {
-          final filtered = _genres
+          final filtered = mangaGenres
               .where(
                 (genre) => genre.toLowerCase().contains(query.toLowerCase()),
               )

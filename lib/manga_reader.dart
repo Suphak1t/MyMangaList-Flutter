@@ -357,15 +357,31 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
         );
       }
       return ListView.builder(
-        itemCount: _files.length + (_nextChapter == null ? 0 : 1),
+        itemCount:
+            _files.length +
+            (widget.chapterIndex > 0 || _nextChapter != null ? 1 : 0),
         itemBuilder: (context, index) => index == _files.length
             ? Padding(
                 padding: const EdgeInsets.all(24),
                 child: Center(
-                  child: FilledButton.icon(
-                    onPressed: _openNextChapter,
-                    icon: const Icon(Icons.arrow_forward),
-                    label: const Text('ตอนถัดไป'),
+                  child: Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      if (widget.chapterIndex > 0)
+                        OutlinedButton.icon(
+                          onPressed: _openPreviousChapter,
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('ตอนก่อนหน้า'),
+                        ),
+                      if (_nextChapter != null)
+                        FilledButton.icon(
+                          onPressed: _openNextChapter,
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text('ตอนถัดไป'),
+                        ),
+                    ],
                   ),
                 ),
               )
@@ -391,7 +407,8 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          if (widget.chapterIndex > 0)
+          if (widget.chapterIndex > 0 &&
+              (_loading || _type == 'pdf' || _singlePage))
             TextButton.icon(
               onPressed: _openPreviousChapter,
               icon: const Icon(Icons.arrow_back),

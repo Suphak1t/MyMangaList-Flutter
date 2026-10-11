@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'config.dart';
+import 'genre_options.dart';
 import 'manga_card.dart';
 import 'manga_detail.dart';
 
@@ -22,7 +23,7 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
   bool _public = true;
   bool _loading = true;
   String? _error;
-  String _genre = 'all';
+  final Set<String> _selectedGenres = {};
   String _release = 'all';
   String _visibility = 'all';
 
@@ -60,12 +61,6 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
         _manga = (data['manga'] as List)
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList();
-        final available = _manga.expand(
-          (manga) => manga['genres'] is List
-              ? (manga['genres'] as List).map((value) => value.toString())
-              : [(manga['genre'] ?? '').toString()],
-        );
-        if (_genre != 'all' && !available.contains(_genre)) _genre = 'all';
       });
     } catch (error) {
       if (mounted) {
@@ -90,7 +85,8 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
         ...genres,
       ].whereType<String>().join(' ').toLowerCase();
       return (text.isEmpty || haystack.contains(text)) &&
-          (_genre == 'all' || genres.contains(_genre)) &&
+          (_selectedGenres.isEmpty ||
+              genres.any((genre) => _selectedGenres.contains(genre))) &&
           (_release == 'all' || manga['release_status'] == _release) &&
           (_public || _visibility == 'all' || manga['status'] == _visibility);
     }).toList();
@@ -110,19 +106,77 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
     if (mounted) _load();
   }
 
+  Future<void> _chooseGenres() async {
+    String query = '';
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, updateDialog) {
+          final filtered = mangaGenres
+              .where(
+                (genre) => genre.toLowerCase().contains(query.toLowerCase()),
+              )
+              .toList();
+          return AlertDialog(
+            title: const Text('เลือกประเภทการ์ตูน'),
+            content: SizedBox(
+              width: 400,
+              height: 430,
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      hintText: 'ค้นหาแนวเรื่อง',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) => updateDialog(() => query = value),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final genre = filtered[index];
+                        return CheckboxListTile(
+                          title: Text(genre),
+                          value: _selectedGenres.contains(genre),
+                          onChanged: (checked) {
+                            updateDialog(() {
+                              if (checked == true) {
+                                _selectedGenres.add(genre);
+                              } else {
+                                _selectedGenres.remove(genre);
+                              }
+                            });
+                            setState(() {});
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  updateDialog(_selectedGenres.clear);
+                  setState(() {});
+                },
+                child: const Text('ล้างที่เลือก'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('เสร็จ'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final genres =
-        _manga
-            .expand(
-              (manga) => manga['genres'] is List
-                  ? (manga['genres'] as List).map((value) => value.toString())
-                  : [(manga['genre'] ?? '').toString()],
-            )
-            .where((value) => value.isNotEmpty)
-            .toSet()
-            .toList()
-          ..sort();
     return Scaffold(
       appBar: AppBar(title: const Text('ค้นหา Manga')),
       body: RefreshIndicator(
@@ -149,7 +203,6 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
                   onSelected: (_) {
                     setState(() {
                       _public = true;
-                      _genre = 'all';
                     });
                     _load();
                   },
@@ -160,7 +213,6 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
                   onSelected: (_) {
                     setState(() {
                       _public = false;
-                      _genre = 'all';
                     });
                     _load();
                   },
@@ -168,20 +220,28 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
               ],
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _genre,
-              decoration: const InputDecoration(
-                labelText: 'ประเภทการ์ตูน',
-                border: OutlineInputBorder(),
+            OutlinedButton.icon(
+              onPressed: _chooseGenres,
+              icon: const Icon(Icons.checklist),
+              label: Text(
+                _selectedGenres.isEmpty
+                    ? 'ประเภทการ์ตูน: ทุกแนว'
+                    : 'ประเภทการ์ตูน: เลือก ${_selectedGenres.length} แนว',
               ),
-              items: [
-                const DropdownMenuItem(value: 'all', child: Text('ทุกแนว')),
-                ...genres.map(
-                  (genre) => DropdownMenuItem(value: genre, child: Text(genre)),
-                ),
-              ],
-              onChanged: (value) => setState(() => _genre = value ?? 'all'),
             ),
+            if (_selectedGenres.isNotEmpty)
+              Wrap(
+                spacing: 6,
+                children: _selectedGenres
+                    .map(
+                      (genre) => InputChip(
+                        label: Text(genre),
+                        onDeleted: () =>
+                            setState(() => _selectedGenres.remove(genre)),
+                      ),
+                    )
+                    .toList(),
+              ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               value: _release,

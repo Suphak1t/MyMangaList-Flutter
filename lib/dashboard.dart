@@ -167,7 +167,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   List<Map<String, dynamic>> get _visibleManga {
-    final query = _searchController.text.trim().toLowerCase();
+    final query = _showPublic
+        ? ''
+        : _searchController.text.trim().toLowerCase();
     return _manga.where((item) {
       final matchesStatus =
           _selectedStatus == 'All' || item['status'] == _selectedStatus;
@@ -200,16 +202,17 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('MyMangaList'),
         actions: [
-          IconButton(
-            tooltip: 'ค้นหา Manga',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MangaSearchPage(user: widget.user),
+          if (_showPublic)
+            IconButton(
+              tooltip: 'ค้นหา Manga',
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MangaSearchPage(user: widget.user),
+                ),
               ),
+              icon: const Icon(Icons.search),
             ),
-            icon: const Icon(Icons.search),
-          ),
           IconButton(
             tooltip: 'สลับธีมมืด',
             onPressed: toggleAppTheme,
@@ -307,18 +310,20 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
             const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MangaSearchPage(user: widget.user),
+            if (_showPublic) ...[
+              FilledButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MangaSearchPage(user: widget.user),
+                  ),
                 ),
+                icon: const Icon(Icons.search),
+                label: const Text('ไปหน้าค้นหาและกรอง Manga'),
               ),
-              icon: const Icon(Icons.search),
-              label: const Text('ไปหน้าค้นหาและกรอง Manga'),
-            ),
-            const SizedBox(height: 20),
-            if (_topManga.isNotEmpty) ...[
+              const SizedBox(height: 20),
+            ],
+            if (_showPublic && _topManga.isNotEmpty) ...[
               Text(
                 'Top 10 ยอดผู้อ่าน',
                 style: Theme.of(context).textTheme.titleLarge,
@@ -346,26 +351,28 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               const SizedBox(height: 16),
             ],
-            TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'ล้างคำค้นหา',
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
-                border: const OutlineInputBorder(),
+            if (!_showPublic) ...[
+              TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'ล้างคำค้นหา',
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.close),
+                        ),
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             if (!_showPublic)
               DropdownButtonFormField<String>(
                 value: _selectedStatus,
