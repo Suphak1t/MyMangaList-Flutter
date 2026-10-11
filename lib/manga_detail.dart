@@ -8,6 +8,8 @@ import 'chapter_dialog.dart';
 import 'chapter_upload.dart';
 import 'comments_page.dart';
 import 'config.dart';
+import 'manga_card.dart';
+import 'manga_cover.dart';
 import 'manga_reader.dart';
 
 class MangaDetailPage extends StatefulWidget {
@@ -109,7 +111,27 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         ...changes.fields,
       });
       if (!mounted) return;
-      setState(() => _manga = {..._manga, ...changes.fields});
+      setState(
+        () => _manga = {
+          ..._manga,
+          ...changes.fields,
+          'genre': (changes.fields['genres'] as List).first,
+        },
+      );
+      if (changes.coverFile != null) {
+        try {
+          final coverFilename = await uploadMangaCover(
+            _manga['manga_id'] as int,
+            changes.coverFile!,
+            widget.accessToken,
+          );
+          if (mounted) setState(() => _manga['cover_filename'] = coverFilename);
+        } catch (error) {
+          _showError('บันทึกข้อมูลแล้ว แต่ภาพปกไม่สำเร็จ: $error');
+          return;
+        }
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('แก้ไข Manga สำเร็จ')));
@@ -271,6 +293,22 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  Future<void> _rate(int rating) async {
+    setState(() => _busy = true);
+    try {
+      final data = await _request('manga_rate.php', {
+        'manga_id': _manga['manga_id'],
+        'rating': rating,
+      });
+      if (!mounted) return;
+      setState(() => _manga = {..._manga, ...data});
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -330,13 +368,27 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Center(
+            child: MangaCover(
+              manga: _manga,
+              accessToken: widget.accessToken,
+              width: 190,
+              height: 260,
+            ),
+          ),
+          const SizedBox(height: 16),
           Text(
             (_manga['title'] ?? '').toString(),
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 20),
           _field('ผู้แต่ง', _manga['author']),
-          _field('แนวเรื่อง', _manga['genre']),
+          _field(
+            'แนวเรื่อง',
+            _manga['genres'] is List
+                ? (_manga['genres'] as List).join(', ')
+                : _manga['genre'],
+          ),
           _field(
             'สถานะ',
             _manga['is_hidden'] == true
@@ -344,6 +396,35 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
                 : (_manga['status'] == 'public' ? 'สาธารณะ' : 'ส่วนตัว'),
           ),
           _field('รายละเอียด', _manga['description']),
+          _field('สถานะการอัปเดต', mangaReleaseLabel(_manga['release_status'])),
+          _field(
+            'จำนวนตอน',
+            _loadingChapters ? _manga['chapter_count'] : _chapters.length,
+          ),
+          _field('ผู้อ่าน', _manga['view_count'] ?? 0),
+          _field(
+            'ความนิยม',
+            '★ ${_manga['rating_average'] ?? 0} / 5 (${_manga['rating_count'] ?? 0} คะแนน)',
+          ),
+          if (!widget.canEdit &&
+              _manga['status'] == 'public' &&
+              _manga['is_hidden'] != true) ...[
+            const Text('ให้คะแนนเรื่องนี้'),
+            Wrap(
+              children: List.generate(
+                5,
+                (index) => IconButton(
+                  tooltip: '${index + 1} ดาว',
+                  onPressed: _busy ? null : () => _rate(index + 1),
+                  icon: Icon(
+                    (index + 1) <= ((_manga['my_rating'] as num?)?.toInt() ?? 0)
+                        ? Icons.star
+                        : Icons.star_border,
+                  ),
+                ),
+              ),
+            ),
+          ],
           if (_manga['username'] != null)
             _field('ผู้เพิ่ม', _manga['username']),
           OutlinedButton.icon(

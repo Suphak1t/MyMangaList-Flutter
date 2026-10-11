@@ -6,7 +6,11 @@ import 'package:http/http.dart' as http;
 import 'add_manga_dialog.dart';
 import 'admin_dashboard.dart';
 import 'config.dart';
+import 'manga_card.dart';
+import 'manga_cover.dart';
 import 'manga_detail.dart';
+import 'manga_search.dart';
+import 'theme_mode.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.user, this.onLogout});
@@ -23,6 +27,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _manga = [];
+  List<Map<String, dynamic>> _topManga = [];
   String _selectedStatus = 'All';
   bool _showPublic = false;
   bool _isLoading = true;
@@ -47,24 +52,49 @@ class _DashboardPageState extends State<DashboardPage> {
     });
 
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${ApiConfig.baseUrl}/manga_get.php${_showPublic ? '?scope=public' : ''}',
+      final headers = {
+        'Authorization': 'Bearer ${widget.user['access_token']}',
+      };
+      final responses = await Future.wait([
+        http.get(
+          Uri.parse(
+            '${ApiConfig.baseUrl}/manga_get.php${_showPublic ? '?scope=public' : ''}',
+          ),
+          headers: headers,
         ),
-        headers: {'Authorization': 'Bearer ${widget.user['access_token']}'},
-      );
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-
-      if (response.statusCode != 200 || data['success'] != true) {
+        http.get(
+          Uri.parse('${ApiConfig.baseUrl}/manga_get.php?scope=public'),
+          headers: headers,
+        ),
+      ]);
+      final data = jsonDecode(responses[0].body) as Map<String, dynamic>;
+      final publicData = jsonDecode(responses[1].body) as Map<String, dynamic>;
+      if (responses[0].statusCode != 200 ||
+          data['success'] != true ||
+          responses[1].statusCode != 200 ||
+          publicData['success'] != true) {
         throw Exception(data['message'] ?? 'โหลดรายการ Manga ไม่สำเร็จ');
       }
-
       final items = data['manga'] as List<dynamic>? ?? [];
+      final top = (publicData['manga'] as List<dynamic>? ?? [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .toList();
+      top.sort((a, b) {
+        final views = (b['view_count'] as num).compareTo(
+          a['view_count'] as num,
+        );
+        return views != 0
+            ? views
+            : (b['rating_average'] as num).compareTo(
+                a['rating_average'] as num,
+              );
+      });
       if (!mounted) return;
       setState(() {
         _manga = items
             .map((item) => Map<String, dynamic>.from(item as Map))
             .toList();
+        _topManga = top.take(10).toList();
       });
     } catch (error) {
       if (!mounted) return;
@@ -102,6 +132,24 @@ class _DashboardPageState extends State<DashboardPage> {
         throw Exception(data['message'] ?? 'เพิ่ม Manga ไม่สำเร็จ');
       }
 
+      if (manga.coverFile != null) {
+        try {
+          await uploadMangaCover(
+            (data['manga_id'] as num).toInt(),
+            manga.coverFile!,
+            widget.user['access_token'].toString(),
+          );
+        } catch (error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('สร้างเรื่องแล้ว แต่ภาพปกไม่สำเร็จ: $error'),
+              ),
+            );
+          }
+        }
+      }
+
       if (mounted) setState(() => _showPublic = false);
       await _loadManga();
       if (!mounted) return;
@@ -127,6 +175,7 @@ class _DashboardPageState extends State<DashboardPage> {
         item['title'],
         item['author'],
         item['genre'],
+        if (item['genres'] is List) ...(item['genres'] as List),
       ].whereType<String>().join(' ').toLowerCase();
       return matchesStatus && (query.isEmpty || searchable.contains(query));
     }).toList();
@@ -136,12 +185,6 @@ class _DashboardPageState extends State<DashboardPage> {
     'private' => 'ส่วนตัว',
     'public' => 'สาธารณะ',
     _ => status,
-  };
-
-  Color _statusColor(String status) => switch (status) {
-    'private' => Colors.blueGrey,
-    'public' => Colors.teal,
-    _ => Colors.blueGrey,
   };
 
   @override
@@ -157,6 +200,21 @@ class _DashboardPageState extends State<DashboardPage> {
       appBar: AppBar(
         title: const Text('MyMangaList'),
         actions: [
+          IconButton(
+            tooltip: 'ค้นหา Manga',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MangaSearchPage(user: widget.user),
+              ),
+            ),
+            icon: const Icon(Icons.search),
+          ),
+          IconButton(
+            tooltip: 'สลับธีมมืด',
+            onPressed: toggleAppTheme,
+            icon: const Icon(Icons.dark_mode_outlined),
+          ),
           if (isAdmin)
             IconButton(
               tooltip: 'จัดการผู้ใช้',
@@ -249,6 +307,45 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
             const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MangaSearchPage(user: widget.user),
+                ),
+              ),
+              icon: const Icon(Icons.search),
+              label: const Text('ไปหน้าค้นหาและกรอง Manga'),
+            ),
+            const SizedBox(height: 20),
+            if (_topManga.isNotEmpty) ...[
+              Text(
+                'Top 10 ยอดผู้อ่าน',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              ..._topManga.asMap().entries.map(
+                (entry) => Row(
+                  children: [
+                    SizedBox(
+                      width: 36,
+                      child: Text(
+                        '${entry.key + 1}.',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Expanded(
+                      child: MangaCard(
+                        manga: entry.value,
+                        accessToken: widget.user['access_token'].toString(),
+                        onTap: () => _openManga(entry.value),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             TextField(
               controller: _searchController,
               onChanged: (_) => setState(() {}),
@@ -322,7 +419,13 @@ class _DashboardPageState extends State<DashboardPage> {
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              ..._visibleManga.map(_buildMangaTile),
+              ..._visibleManga.map(
+                (manga) => MangaCard(
+                  manga: manga,
+                  accessToken: widget.user['access_token'].toString(),
+                  onTap: () => _openManga(manga),
+                ),
+              ),
             ],
           ],
         ),
@@ -330,55 +433,18 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildMangaTile(Map<String, dynamic> manga) {
-    final status = (manga['status'] ?? 'private').toString();
-    final subtitleParts = [
-      manga['author'],
-      manga['genre'],
-    ].whereType<String>().where((value) => value.isNotEmpty).toList();
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _statusColor(status).withValues(alpha: 0.12),
-          foregroundColor: _statusColor(status),
-          child: const Icon(Icons.book_outlined),
+  Future<void> _openManga(Map<String, dynamic> manga) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MangaDetailPage(
+          manga: manga,
+          accessToken: widget.user['access_token'].toString(),
+          canEdit: manga['user_id'] == widget.user['user_id'],
         ),
-        title: Text(
-          (manga['title'] ?? '').toString(),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          [
-            if (_showPublic) (manga['username'] ?? '').toString(),
-            if (subtitleParts.isNotEmpty) subtitleParts.join(' · '),
-            manga['is_hidden'] == true
-                ? 'ถูกซ่อนโดยผู้ดูแล'
-                : _statusLabel(status),
-            '${manga['chapter_count'] ?? 0} ตอน',
-          ].join('\n'),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        isThreeLine: subtitleParts.isNotEmpty,
-        onTap: () async {
-          await Navigator.push<void>(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MangaDetailPage(
-                manga: manga,
-                accessToken: widget.user['access_token'].toString(),
-                canEdit: manga['user_id'] == widget.user['user_id'],
-              ),
-            ),
-          );
-          if (mounted) await _loadManga();
-        },
       ),
     );
+    if (mounted) await _loadManga();
   }
 }
 

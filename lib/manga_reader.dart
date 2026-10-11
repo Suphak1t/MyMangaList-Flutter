@@ -52,26 +52,29 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
       ? widget.chapters[widget.chapterIndex + 1]
       : null;
 
-  void _openNextChapter() {
-    final next = _nextChapter;
-    if (next == null) return;
-    final chapterTitle = (next['title'] ?? '').toString();
+  void _openChapter(int index) {
+    final chapter = widget.chapters[index];
+    final chapterTitle = (chapter['title'] ?? '').toString();
     final title =
-        'ตอนที่ ${next['chapter_number']}${chapterTitle.isEmpty ? '' : ' · $chapterTitle'}';
+        'ตอนที่ ${chapter['chapter_number']}${chapterTitle.isEmpty ? '' : ' · $chapterTitle'}';
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => MangaReaderPage(
           mangaId: widget.mangaId,
-          chapterId: next['chapter_id'] as int,
+          chapterId: chapter['chapter_id'] as int,
           title: title,
           accessToken: widget.accessToken,
           chapters: widget.chapters,
-          chapterIndex: widget.chapterIndex + 1,
+          chapterIndex: index,
         ),
       ),
     );
   }
+
+  void _openNextChapter() => _openChapter(widget.chapterIndex + 1);
+
+  void _openPreviousChapter() => _openChapter(widget.chapterIndex - 1);
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer ${widget.accessToken}',
@@ -134,12 +137,25 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
         _pageCount = type == 'images' ? files.length : 0;
         _loading = false;
       });
+      _recordView();
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = error.toString().replaceFirst('Exception: ', '');
         _loading = false;
       });
+    }
+  }
+
+  Future<void> _recordView() async {
+    try {
+      await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/manga_view.php'),
+        headers: {..._headers, 'Content-Type': 'application/json'},
+        body: jsonEncode({'chapter_id': widget.chapterId}),
+      );
+    } catch (_) {
+      // A view-count problem must not interrupt reading.
     }
   }
 
@@ -375,6 +391,12 @@ class _MangaReaderPageState extends State<MangaReaderPage> {
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
+          if (widget.chapterIndex > 0)
+            TextButton.icon(
+              onPressed: _openPreviousChapter,
+              icon: const Icon(Icons.arrow_back),
+              label: const Text('ตอนก่อนหน้า'),
+            ),
           if (_nextChapter != null &&
               _pageCount > 0 &&
               _currentPage == _pageCount &&

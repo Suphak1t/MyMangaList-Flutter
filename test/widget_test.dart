@@ -13,6 +13,8 @@ import 'package:lab6/admin_dashboard.dart';
 import 'package:lab6/chapter_dialog.dart';
 import 'package:lab6/main.dart';
 import 'package:lab6/manga_detail.dart';
+import 'package:lab6/manga_reader.dart';
+import 'package:lab6/theme_mode.dart';
 
 void main() {
   testWidgets('Login page renders the app entry point', (tester) async {
@@ -66,12 +68,57 @@ void main() {
     expect(find.text('Action'), findsNothing);
     await tester.tap(find.text('Romance'));
     await tester.pumpAndSettle();
-    expect(find.text('แนวเรื่อง: Romance'), findsOneWidget);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'ค้นหาแนวเรื่อง'),
+      'Action',
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Action'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('เสร็จ'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Romance'), findsWidgets);
     await tester.enterText(find.byType(TextFormField).first, 'New Manga');
     await tester.tap(find.text('บันทึก'));
     await tester.pumpAndSettle();
     expect(saved?.fields['title'], 'New Manga');
-    expect(saved?.fields['genre'], 'Romance');
+    expect(saved?.fields['genres'], containsAll(['Romance', 'Action']));
+  });
+
+  testWidgets('Editing offers a separate release status', (tester) async {
+    MangaFormResult? saved;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => saved = await showDialog<MangaFormResult>(
+                context: context,
+                builder: (context) => const AddMangaDialog(
+                  manga: {
+                    'title': 'Existing Manga',
+                    'genres': ['Action'],
+                    'status': 'public',
+                    'release_status': 'ongoing',
+                  },
+                ),
+              ),
+              child: const Text('เปิดฟอร์มแก้ไข'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('เปิดฟอร์มแก้ไข'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('กำลังอัปเดต'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('ช่วงหยุดอัปโหลด').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('บันทึก'));
+    await tester.pumpAndSettle();
+    expect(saved?.fields['release_status'], 'hiatus');
+    expect(saved?.fields['status'], 'public');
   });
 
   testWidgets('A new chapter needs a PDF or images', (tester) async {
@@ -105,12 +152,13 @@ void main() {
 
     expect(find.text('Sample Manga'), findsOneWidget);
     expect(find.text('Sample description'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('ลบ'), 250);
     await tester.tap(find.text('ลบ'));
     await tester.pumpAndSettle();
     expect(find.textContaining('ต้องการลบ'), findsOneWidget);
     await tester.tap(find.text('ยกเลิก'));
     await tester.pumpAndSettle();
-    expect(find.text('Sample Manga'), findsOneWidget);
+    expect(find.byType(MangaDetailPage), findsOneWidget);
   });
 
   testWidgets('Public Manga cannot be edited by another user', (tester) async {
@@ -126,6 +174,7 @@ void main() {
     expect(find.text('Shared Manga'), findsOneWidget);
     expect(find.text('แก้ไข'), findsNothing);
     expect(find.text('ลบ'), findsNothing);
+    await tester.scrollUntilVisible(find.text('รีพอร์ต Manga'), 250);
     expect(find.text('รีพอร์ต Manga'), findsOneWidget);
   });
 
@@ -137,5 +186,36 @@ void main() {
     );
     expect(find.text('ผู้ใช้'), findsOneWidget);
     expect(find.text('รีพอร์ต'), findsOneWidget);
+  });
+
+  testWidgets('Reader shows previous chapter when available', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: MangaReaderPage(
+          mangaId: 1,
+          chapterId: 2,
+          title: 'ตอนที่ 2',
+          accessToken: 'test-token',
+          chapters: [
+            {'chapter_id': 1, 'chapter_number': 1},
+            {'chapter_id': 2, 'chapter_number': 2},
+          ],
+          chapterIndex: 1,
+        ),
+      ),
+    );
+    expect(find.text('ตอนก่อนหน้า'), findsOneWidget);
+  });
+
+  testWidgets('Theme can switch to dark mode', (tester) async {
+    appThemeMode.value = ThemeMode.light;
+    await tester.pumpWidget(const MyApp());
+    toggleAppTheme();
+    await tester.pump();
+    expect(
+      tester.widget<MaterialApp>(find.byType(MaterialApp)).themeMode,
+      ThemeMode.dark,
+    );
+    appThemeMode.value = ThemeMode.light;
   });
 }
