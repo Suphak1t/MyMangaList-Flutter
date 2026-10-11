@@ -4,7 +4,7 @@ Flutter app for keeping a Manga list, publishing chapters, and reading public Ma
 
 ## Run on Windows Desktop
 
-1. Start the PHP API and MySQL through XAMPP. See the API repository at `C:\xampp\htdocs\mymangalist_api` for database setup.
+1. Start the PHP API and MySQL through XAMPP. See the [MyMangaList API repository](https://github.com/Suphak1t/MyMangaList-API) for database setup.
 2. Check the API URL in `lib/config.dart`. The current value is `http://localhost/mymangalist_api`.
 3. Enable Windows Developer Mode (Flutter plugins need symlink support), then run `flutter pub get` and `flutter run -d windows` from this folder.
 
