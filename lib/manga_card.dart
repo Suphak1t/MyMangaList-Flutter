@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'manga_cover.dart';
 
 String mangaReleaseLabel(Object? value) => switch (value) {
+  'coming_soon' => 'Coming Soon',
   'hiatus' => 'Hiatus',
   'completed' => 'Completed',
   _ => 'Ongoing',

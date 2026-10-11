@@ -46,7 +46,12 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
     final status = (manga['status'] ?? '').toString();
     if (status == 'public') _status = 'public';
     final releaseStatus = (manga['release_status'] ?? '').toString();
-    if (['ongoing', 'hiatus', 'completed'].contains(releaseStatus)) {
+    if ([
+      'ongoing',
+      'hiatus',
+      'completed',
+      'coming_soon',
+    ].contains(releaseStatus)) {
       _releaseStatus = releaseStatus;
     }
   }
@@ -154,7 +159,7 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
         'genres': _selectedGenres.toList(),
         'description': _descriptionController.text.trim(),
         'status': _status,
-        if (widget.manga != null) 'release_status': _releaseStatus,
+        'release_status': _releaseStatus,
       }, _coverFile),
     );
   }
@@ -224,30 +229,34 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                     if (value != null) setState(() => _status = value);
                   },
                 ),
-                if (widget.manga != null) ...[
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _releaseStatus,
-                    decoration: const InputDecoration(
-                      labelText: 'Release status',
-                      border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _releaseStatus,
+                  decoration: const InputDecoration(
+                    labelText: 'Release status',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    const DropdownMenuItem(
+                      value: 'ongoing',
+                      child: Text('Ongoing'),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'ongoing',
-                        child: Text('Ongoing'),
-                      ),
+                    const DropdownMenuItem(
+                      value: 'coming_soon',
+                      child: Text('Coming Soon'),
+                    ),
+                    if (widget.manga != null) ...const [
                       DropdownMenuItem(value: 'hiatus', child: Text('Hiatus')),
                       DropdownMenuItem(
                         value: 'completed',
                         child: Text('Completed'),
                       ),
                     ],
-                    onChanged: (value) {
-                      if (value != null) setState(() => _releaseStatus = value);
-                    },
-                  ),
-                ],
+                  ],
+                  onChanged: (value) {
+                    if (value != null) setState(() => _releaseStatus = value);
+                  },
+                ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _chooseCover,

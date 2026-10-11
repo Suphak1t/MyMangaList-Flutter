@@ -251,6 +251,10 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
               ),
               items: const [
                 DropdownMenuItem(value: 'all', child: Text('All')),
+                DropdownMenuItem(
+                  value: 'coming_soon',
+                  child: Text('Coming Soon'),
+                ),
                 DropdownMenuItem(value: 'ongoing', child: Text('Ongoing')),
                 DropdownMenuItem(value: 'hiatus', child: Text('Hiatus')),
                 DropdownMenuItem(value: 'completed', child: Text('Completed')),

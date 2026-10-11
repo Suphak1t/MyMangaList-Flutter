@@ -86,6 +86,41 @@ void main() {
     await tester.pumpAndSettle();
     expect(saved?.fields['title'], 'New Manga');
     expect(saved?.fields['genres'], containsAll(['Romance', 'Action']));
+    expect(saved?.fields['release_status'], 'ongoing');
+  });
+
+  testWidgets('New Manga can start as Coming Soon', (tester) async {
+    MangaFormResult? saved;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async => saved = await showDialog<MangaFormResult>(
+                context: context,
+                builder: (context) => const AddMangaDialog(),
+              ),
+              child: const Text('เปิดฟอร์ม'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('เปิดฟอร์ม'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).first, 'Coming Manga');
+    await tester.tap(find.text('เลือกแนวเรื่อง *'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Action'));
+    await tester.tap(find.text('เสร็จ'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ongoing'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Coming Soon').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('บันทึก'));
+    await tester.pumpAndSettle();
+    expect(saved?.fields['release_status'], 'coming_soon');
   });
 
   testWidgets('Editing offers a separate release status', (tester) async {
