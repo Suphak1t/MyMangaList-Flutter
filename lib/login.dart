@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'config.dart';
 import 'dashboard.dart';
 import 'register.dart';
+import 'auth_ui.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -100,68 +101,52 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.book_rounded, size: 90, color: Colors.blue),
-                const SizedBox(height: 20),
-                const Text(
-                  'MyMangaList',
-                  style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 30),
-                TextField(
-                  controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('เข้าสู่ระบบ'),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const RegisterPage(),
-                      ),
-                    );
-                  },
-                  child: const Text('สร้างบัญชีใหม่'),
-                ),
-              ],
+      body: AuthLayout(
+        title: 'Welcome to MyMangaList',
+        subtitle: 'กรุณาเข้าสู่ระบบเพื่อเริ่มต้นใช้งาน',
+        headingTextAlign: TextAlign.center,
+        children: [
+          TextField(
+            controller: _usernameController,
+            decoration: authInputDecoration(
+              context,
+              label: 'Username',
+              icon: Icons.person_outline_rounded,
             ),
           ),
-        ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: authInputDecoration(
+              context,
+              label: 'Password',
+              icon: Icons.lock_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            style: authPrimaryButtonStyle(context),
+            onPressed: _isLoading ? null : _login,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('เข้าสู่ระบบ'),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const RegisterPage()),
+              );
+            },
+            child: const Text('ยังไม่มีบัญชี? สร้างบัญชีใหม่'),
+          ),
+        ],
       ),
     );
   }

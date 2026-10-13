@@ -185,6 +185,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final isAdmin = (widget.user['role'] ?? '').toString() == 'admin';
     final publicCount = _manga
         .where(
@@ -193,8 +195,14 @@ class _DashboardPageState extends State<DashboardPage> {
         .length;
 
     return Scaffold(
+      backgroundColor: colors.surfaceContainerLowest,
       appBar: AppBar(
-        title: const Text('MyMangaList'),
+        title: const Text(
+          'MyMangaList',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: colors.surface,
+        scrolledUnderElevation: 0,
         actions: [
           if (_showPublic)
             IconButton(
@@ -232,203 +240,263 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addManga,
-        icon: const Icon(Icons.add),
+        icon: const Icon(Icons.add_rounded),
         label: const Text('เพิ่ม Manga'),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadManga,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 96),
-          children: [
-            Text(
-              'สวัสดี, ${widget.user['username'] ?? 'นักอ่าน'}',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+      body: LayoutBuilder(
+        builder: (context, constraints) => RefreshIndicator(
+          onRefresh: _loadManga,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
+              24,
+              ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
+              112,
             ),
-            const SizedBox(height: 4),
-            Text(
-              _showPublic ? 'Manga สาธารณะ' : 'ชั้นหนังสือของคุณ',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+            children: [
+              _DashboardHeader(
+                username: (widget.user['username'] ?? 'นักอ่าน').toString(),
+                showPublic: _showPublic,
               ),
-            ),
-            const SizedBox(height: 20),
-            Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('ของฉัน'),
-                  selected: !_showPublic,
-                  onSelected: (_) {
-                    setState(() {
-                      _showPublic = false;
-                      _selectedStatus = 'All';
-                    });
-                    _loadManga();
-                  },
-                ),
-                ChoiceChip(
-                  label: const Text('สาธารณะ'),
-                  selected: _showPublic,
-                  onSelected: (_) {
-                    setState(() {
-                      _showPublic = true;
-                      _selectedStatus = 'All';
-                    });
-                    _loadManga();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _SummaryTile(
-                    label: 'ทั้งหมด',
-                    value: '${_manga.length}',
-                    icon: Icons.auto_stories_outlined,
-                    color: Colors.indigo,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _SummaryTile(
-                    label: 'สาธารณะ',
-                    value: '$publicCount',
-                    icon: Icons.menu_book_outlined,
-                    color: Colors.teal,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            if (_showPublic) ...[
-              FilledButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => MangaSearchPage(user: widget.user),
-                  ),
-                ),
-                icon: const Icon(Icons.search),
-                label: const Text('ไปหน้าค้นหาและกรอง Manga'),
-              ),
-              const SizedBox(height: 20),
-            ],
-            if (_showPublic && _topManga.isNotEmpty) ...[
-              Text(
-                'Top 10 ยอดผู้อ่าน',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              ..._topManga.asMap().entries.map(
-                (entry) => Row(
-                  children: [
-                    SizedBox(
-                      width: 36,
-                      child: Text(
-                        '${entry.key + 1}.',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    Expanded(
-                      child: MangaCard(
-                        manga: entry.value,
-                        accessToken: widget.user['access_token'].toString(),
-                        onTap: () => _openManga(entry.value),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (!_showPublic) ...[
-              TextField(
-                controller: _searchController,
-                onChanged: (_) => setState(() {}),
-                decoration: InputDecoration(
-                  hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'ล้างคำค้นหา',
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            if (!_showPublic)
-              DropdownButtonFormField<String>(
-                value: _selectedStatus,
-                decoration: const InputDecoration(
-                  labelText: 'Visibility',
-                  prefixIcon: Icon(Icons.filter_list),
-                  border: OutlineInputBorder(),
-                ),
-                items: [
-                  const DropdownMenuItem(value: 'All', child: Text('All')),
-                  ..._statuses.map(
-                    (status) => DropdownMenuItem(
-                      value: status,
-                      child: Text(mangaVisibilityLabel(status)),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Text(
+                    'สำรวจชั้นหนังสือ',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _selectedStatus = value);
-                },
               ),
-            const SizedBox(height: 16),
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(36),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (_loadError != null)
-              _MessageState(
-                icon: Icons.cloud_off_outlined,
-                title: 'โหลดรายการไม่สำเร็จ',
-                message: _loadError!,
-                actionLabel: 'ลองอีกครั้ง',
-                onAction: _loadManga,
-              )
-            else if (_visibleManga.isEmpty)
-              _MessageState(
-                icon: _manga.isEmpty
-                    ? Icons.auto_stories_outlined
-                    : Icons.search_off,
-                title: _manga.isEmpty ? 'ยังไม่มี Manga ในชั้น' : 'ไม่พบรายการ',
-                message: _manga.isEmpty
-                    ? 'เพิ่มเรื่องแรกของคุณเพื่อเริ่มจัดชั้นหนังสือ'
-                    : 'ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ',
-              )
-            else ...[
-              Text(
-                '${_showPublic ? 'รายการสาธารณะ' : 'รายการของฉัน'} (${_visibleManga.length})',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    avatar: const Icon(
+                      Icons.bookmark_outline_rounded,
+                      size: 18,
+                    ),
+                    label: const Text('ของฉัน'),
+                    selected: !_showPublic,
+                    onSelected: (_) {
+                      setState(() {
+                        _showPublic = false;
+                        _selectedStatus = 'All';
+                      });
+                      _loadManga();
+                    },
+                  ),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.public_rounded, size: 18),
+                    label: const Text('สาธารณะ'),
+                    selected: _showPublic,
+                    onSelected: (_) {
+                      setState(() {
+                        _showPublic = true;
+                        _selectedStatus = 'All';
+                      });
+                      _loadManga();
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              ..._visibleManga.map(
-                (manga) => MangaCard(
-                  manga: manga,
-                  accessToken: widget.user['access_token'].toString(),
-                  onTap: () => _openManga(manga),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: _SummaryTile(
+                      label: 'ทั้งหมด',
+                      value: '${_manga.length}',
+                      icon: Icons.auto_stories_outlined,
+                      color: colors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _SummaryTile(
+                      label: 'สาธารณะ',
+                      value: '$publicCount',
+                      icon: Icons.menu_book_outlined,
+                      color: colors.tertiary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 28),
+              if (_showPublic) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            MangaSearchPage(user: widget.user),
+                      ),
+                    ),
+                    icon: const Icon(Icons.search_rounded),
+                    label: const Text('ไปหน้าค้นหาและกรอง Manga'),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 28),
+              ],
+              if (_showPublic && _topManga.isNotEmpty) ...[
+                Text(
+                  'Top 10 ยอดผู้อ่าน',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ..._topManga.asMap().entries.map(
+                  (entry) => Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: colors.primaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${entry.key + 1}',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: colors.onPrimaryContainer,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: MangaCard(
+                          manga: entry.value,
+                          accessToken: widget.user['access_token'].toString(),
+                          onTap: () => _openManga(entry.value),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+              if (!_showPublic) ...[
+                Text(
+                  'ค้นหาและกรองรายการ',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colors.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _searchController,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _searchController.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'ล้างคำค้นหา',
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close),
+                                ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _selectedStatus,
+                        decoration: InputDecoration(
+                          labelText: 'Visibility',
+                          prefixIcon: const Icon(Icons.filter_list_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'All',
+                            child: Text('All'),
+                          ),
+                          ..._statuses.map(
+                            (status) => DropdownMenuItem(
+                              value: status,
+                              child: Text(mangaVisibilityLabel(status)),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _selectedStatus = value);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 28),
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(36),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_loadError != null)
+                _MessageState(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'โหลดรายการไม่สำเร็จ',
+                  message: _loadError!,
+                  actionLabel: 'ลองอีกครั้ง',
+                  onAction: _loadManga,
+                )
+              else if (_visibleManga.isEmpty)
+                _MessageState(
+                  icon: _manga.isEmpty
+                      ? Icons.auto_stories_outlined
+                      : Icons.search_off,
+                  title: _manga.isEmpty
+                      ? 'ยังไม่มี Manga ในชั้น'
+                      : 'ไม่พบรายการ',
+                  message: _manga.isEmpty
+                      ? 'เพิ่มเรื่องแรกของคุณเพื่อเริ่มจัดชั้นหนังสือ'
+                      : 'ลองเปลี่ยนคำค้นหาหรือตัวกรองสถานะ',
+                )
+              else ...[
+                Text(
+                  '${_showPublic ? 'รายการสาธารณะ' : 'รายการของฉัน'} (${_visibleManga.length})',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ..._visibleManga.map(
+                  (manga) => MangaCard(
+                    manga: manga,
+                    accessToken: widget.user['access_token'].toString(),
+                    onTap: () => _openManga(manga),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -449,6 +517,64 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader({required this.username, required this.showPublic});
+
+  final String username;
+  final bool showPublic;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.primaryContainer, colors.secondaryContainer],
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'สวัสดี, $username',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colors.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  showPublic ? 'สำรวจ Manga สาธารณะ' : 'ชั้นหนังสือของคุณ',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colors.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(
+            Icons.auto_stories_rounded,
+            size: 48,
+            color: colors.onPrimaryContainer.withValues(alpha: 0.72),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SummaryTile extends StatelessWidget {
   const _SummaryTile({
     required this.label,
@@ -464,30 +590,41 @@ class _SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.09),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-        borderRadius: BorderRadius.circular(8),
+        color: colors.surface,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: color,
-                  ),
-                ),
-              ],
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            value,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              color: colors.onSurface,
+            ),
+          ),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
             ),
           ),
         ],
@@ -513,23 +650,34 @@ class _MessageState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 34, horizontal: 16),
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant),
+      ),
       child: Column(
         children: [
-          Icon(icon, size: 42, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 4),
+          Icon(icon, size: 44, color: colors.primary),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: TextStyle(color: colors.onSurfaceVariant),
           ),
           if (actionLabel != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 18),
             OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],

@@ -76,7 +76,15 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
               )
               .toList();
           return AlertDialog(
-            title: const Text('เลือกแนวเรื่อง (ได้สูงสุด 5)'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            title: Text(
+              'เลือกแนวเรื่อง (ได้สูงสุด 5)',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            ),
             content: SizedBox(
               width: 400,
               height: 430,
@@ -84,9 +92,12 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                 children: [
                   TextField(
                     autofocus: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'ค้นหาแนวเรื่อง',
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     onChanged: (value) => updateSearch(() => query = value),
                   ),
@@ -95,6 +106,9 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) => CheckboxListTile(
                         title: Text(filtered[index]),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                        ),
                         value: _selectedGenres.contains(filtered[index]),
                         onChanged: (checked) {
                           final genre = filtered[index];
@@ -166,8 +180,70 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide.none,
+    );
+    final focusedBorder = fieldBorder.copyWith(
+      borderSide: BorderSide(color: colors.primary, width: 1.5),
+    );
+    final helperStyle = theme.textTheme.bodyMedium?.copyWith(
+      height: 1.45,
+      color: colors.onSurfaceVariant,
+    );
+
     return AlertDialog(
-      title: Text(widget.manga == null ? 'เพิ่ม Manga' : 'แก้ไข Manga'),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      title: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [colors.primaryContainer, colors.secondaryContainer],
+          ),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.manga == null ? 'เพิ่ม Manga' : 'แก้ไข Manga',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'รายละเอียดเรื่องและการแสดงผล',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              widget.manga == null
+                  ? Icons.library_add_outlined
+                  : Icons.edit_note_rounded,
+              size: 34,
+              color: colors.onPrimaryContainer.withValues(alpha: 0.72),
+            ),
+          ],
+        ),
+      ),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(
@@ -175,51 +251,104 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  'ข้อมูลเรื่อง',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 TextFormField(
                   controller: _titleController,
                   autofocus: true,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
                     labelText: 'ชื่อเรื่อง *',
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.menu_book_outlined),
+                    filled: true,
+                    fillColor: colors.surfaceContainerLow,
+                    border: fieldBorder,
+                    enabledBorder: fieldBorder,
+                    focusedBorder: focusedBorder,
                   ),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'กรุณากรอกชื่อเรื่อง'
                       : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 TextField(
                   controller: _authorController,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
                     labelText: 'ผู้แต่ง',
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person_outline_rounded),
+                    filled: true,
+                    fillColor: colors.surfaceContainerLow,
+                    border: fieldBorder,
+                    enabledBorder: fieldBorder,
+                    focusedBorder: focusedBorder,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
+                Text(
+                  'แนวเรื่อง *',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: _chooseGenre,
-                  icon: const Icon(Icons.search),
+                  icon: const Icon(Icons.category_outlined),
                   label: Text(
                     _selectedGenres.isEmpty
                         ? 'เลือกแนวเรื่อง *'
-                        : 'แนวเรื่อง: ${_selectedGenres.join(', ')}',
+                        : 'เลือกแล้ว ${_selectedGenres.length} แนว',
                   ),
                 ),
-                if (_selectedGenres.isNotEmpty)
+                if (_selectedGenres.isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
+                    runSpacing: 4,
                     children: _selectedGenres
                         .map((genre) => Chip(label: Text(genre)))
                         .toList(),
                   ),
+                ],
+                if (_selectionError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _selectionError!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Divider(color: colors.outlineVariant),
+                const SizedBox(height: 16),
+                Text(
+                  'สถานะเรื่อง',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _status,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Visibility',
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.visibility_outlined),
+                    filled: true,
+                    fillColor: colors.surfaceContainerLow,
+                    border: fieldBorder,
+                    enabledBorder: fieldBorder,
+                    focusedBorder: focusedBorder,
                   ),
                   items: const [
                     DropdownMenuItem(value: 'private', child: Text('Private')),
@@ -229,12 +358,17 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                     if (value != null) setState(() => _status = value);
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
                   value: _releaseStatus,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Release status',
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.schedule_rounded),
+                    filled: true,
+                    fillColor: colors.surfaceContainerLow,
+                    border: fieldBorder,
+                    enabledBorder: fieldBorder,
+                    focusedBorder: focusedBorder,
                   ),
                   items: [
                     const DropdownMenuItem(
@@ -257,44 +391,72 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
                     if (value != null) setState(() => _releaseStatus = value);
                   },
                 ),
+                const SizedBox(height: 20),
+                Divider(color: colors.outlineVariant),
+                const SizedBox(height: 16),
+                Text(
+                  'ภาพปกและรายละเอียด',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text('JPG, PNG, WebP · ไม่เกิน 5 MB', style: helperStyle),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _chooseCover,
                   icon: const Icon(Icons.image_outlined),
-                  label: Text(
-                    _coverFile?.name ??
-                        'เลือกภาพปก (JPG, PNG, WebP · ไม่เกิน 5 MB)',
-                  ),
+                  label: const Text('เลือกภาพปก'),
                 ),
-                if (_coverError != null)
-                  Text(
-                    _coverError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+                if (_coverFile != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      _coverFile!.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                const SizedBox(height: 12),
+                ],
+                if (_coverError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _coverError!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colors.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 14),
                 TextField(
                   controller: _descriptionController,
                   minLines: 2,
                   maxLines: 4,
-                  decoration: const InputDecoration(
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
                     labelText: 'รายละเอียด',
                     alignLabelWithHint: true,
-                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: colors.surfaceContainerLow,
+                    border: fieldBorder,
+                    enabledBorder: fieldBorder,
+                    focusedBorder: focusedBorder,
                   ),
                 ),
-                const SizedBox(height: 12),
-                const Text(
+                const SizedBox(height: 14),
+                Text(
                   'สร้างเรื่องก่อน แล้วเพิ่มไฟล์แยกตามตอนในหน้าเรื่อง',
+                  style: helperStyle,
                 ),
-                if (_selectionError != null)
-                  Text(
-                    _selectionError!,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
               ],
             ),
           ),
@@ -303,12 +465,21 @@ class _AddMangaDialogState extends State<AddMangaDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('ยกเลิก'),
+          child: const Text(
+            'ยกเลิก',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
         FilledButton.icon(
           onPressed: _submit,
-          icon: Icon(widget.manga == null ? Icons.add : Icons.save_outlined),
-          label: const Text('บันทึก'),
+          icon: Icon(
+            widget.manga == null ? Icons.add_rounded : Icons.save_outlined,
+            size: 18,
+          ),
+          label: const Text(
+            'บันทึก',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
       ],
     );

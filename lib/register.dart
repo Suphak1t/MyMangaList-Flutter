@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import 'config.dart';
+import 'auth_ui.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -15,7 +16,8 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _isLoading = false;
 
   Future<void> _register() async {
@@ -77,9 +79,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -93,59 +95,56 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              const Text(
-                'สร้างบัญชีผู้ใช้',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm Password',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('สมัครสมาชิก'),
-                ),
-              ),
-            ],
+      appBar: AppBar(
+        title: const Text('สร้างบัญชีใหม่'),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+      ),
+      body: AuthLayout(
+        title: 'Create Your Account',
+        subtitle: 'สร้างบัญชีสำหรับการใช้งาน MyMangaList',
+        headingTextAlign: TextAlign.center,
+        children: [
+          TextField(
+            controller: _usernameController,
+            decoration: authInputDecoration(
+              context,
+              label: 'Username',
+              icon: Icons.person_outline_rounded,
+            ),
           ),
-        ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: authInputDecoration(
+              context,
+              label: 'Password',
+              icon: Icons.lock_outline_rounded,
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _confirmPasswordController,
+            obscureText: true,
+            decoration: authInputDecoration(
+              context,
+              label: 'Confirm Password',
+              icon: Icons.verified_user_outlined,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            style: authPrimaryButtonStyle(context),
+            onPressed: _isLoading ? null : _register,
+            child: _isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('สมัครสมาชิก'),
+          ),
+        ],
       ),
     );
   }

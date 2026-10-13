@@ -10,7 +10,7 @@ Flutter app for keeping a Manga list, publishing chapters, and reading public Ma
 
 Accounts created in the app have the `user` role. Admin access is granted in MySQL, not during registration. The API checks the bearer token and keeps private Manga and editing tied to the owner.
 
-Choose up to five genres from the searchable list, optionally select a cover image, and create a Manga. Open its detail page to add chapters over time. Each chapter has a number, optional title, and one PDF or up to 15 images. Image filenames are sorted alphabetically, so use names such as `001.png`, `002.png`. Chapters can stay as drafts or be published. Visibility `private` is owner-only; `public` Manga and its published chapters can be read by other signed-in users. Release status can start as `ongoing` or `coming_soon`; editing also allows `hiatus` and `completed`. Owners can edit or delete Manga and chapters, replace a cover, and replace each chapter's PDF or image set.
+Choose up to five genres from the searchable list, optionally select a cover image, and create a Manga. Open its detail page to add chapters over time. Each chapter has a number, optional title, and one PDF or up to 15 images, selected in one or more batches. Image filenames are sorted alphabetically, so use names such as `001.png`, `002.png`. Chapters can stay as drafts or be published. Visibility `private` is owner-only; `public` Manga and its published chapters can be read by other signed-in users. Release status can start as `ongoing` or `coming_soon`; editing also allows `hiatus` and `completed`. Owners can edit or delete Manga and chapters, replace a cover, and replace each chapter's PDF or image set.
 
 The dashboard shows covers, chapter counts, and unique reader counts. The public view shows a Top 10 ordered by readers and a button to the search page. The My Manga view keeps a local search box. On the search page, choose multiple genres from the complete genre checklist and filter by release status, visibility, title, and author. Signed-in readers can rate a public Manga from one to five stars; owners cannot rate their own work. One account contributes at most one view per Manga, counted when it opens a published chapter. The dashboard has a light/dark theme switch. The reader shows previous- and next-chapter buttons together after the last image in vertical mode; page/PDF mode uses the top bar.
 
@@ -23,3 +23,5 @@ In the reader, use the settings button to choose vertical scrolling or one page 
 ## Checks
 
 Run `flutter analyze` and `flutter test` after changing Flutter code.
+
+The refreshed login, registration, dashboard, search, Manga detail, and edit dialogs adapt UI work from [Sitthiphong030/MyMangaList](https://github.com/Sitthiphong030/MyMangaList). This project retains its own API configuration and server rules.

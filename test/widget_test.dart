@@ -114,6 +114,8 @@ void main() {
     await tester.tap(find.widgetWithText(CheckboxListTile, 'Action'));
     await tester.tap(find.text('เสร็จ'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Ongoing'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Ongoing'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Coming Soon').last);
@@ -148,6 +150,8 @@ void main() {
       ),
     );
     await tester.tap(find.text('เปิดฟอร์มแก้ไข'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Ongoing'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ongoing'));
     await tester.pumpAndSettle();
@@ -200,6 +204,8 @@ void main() {
       greaterThan(tester.getTopLeft(find.byType(MangaCover)).dy),
     );
     await tester.scrollUntilVisible(find.text('ลบ'), 250);
+    await tester.ensureVisible(find.text('ลบ'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('ลบ'));
     await tester.pumpAndSettle();
     expect(find.textContaining('ต้องการลบ'), findsOneWidget);

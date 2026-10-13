@@ -119,15 +119,21 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
               .toList();
           return AlertDialog(
             title: const Text('เลือกประเภทการ์ตูน'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
             content: SizedBox(
               width: 400,
               height: 430,
               child: Column(
                 children: [
                   TextField(
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'ค้นหาแนวเรื่อง',
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     onChanged: (value) => updateDialog(() => query = value),
                   ),
@@ -177,130 +183,313 @@ class _MangaSearchPageState extends State<MangaSearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final results = _results;
+    final fieldBorder = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('ค้นหา Manga')),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            TextField(
-              controller: _query,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'ชื่อเรื่อง ผู้แต่ง หรือแนวเรื่อง',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('สาธารณะ'),
-                  selected: _public,
-                  onSelected: (_) {
-                    setState(() {
-                      _public = true;
-                    });
-                    _load();
-                  },
-                ),
-                ChoiceChip(
-                  label: const Text('ของฉัน'),
-                  selected: !_public,
-                  onSelected: (_) {
-                    setState(() {
-                      _public = false;
-                    });
-                    _load();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _chooseGenres,
-              icon: const Icon(Icons.checklist),
-              label: Text(
-                _selectedGenres.isEmpty
-                    ? 'ประเภทการ์ตูน: ทุกแนว'
-                    : 'ประเภทการ์ตูน: เลือก ${_selectedGenres.length} แนว',
-              ),
-            ),
-            if (_selectedGenres.isNotEmpty)
-              Wrap(
-                spacing: 6,
-                children: _selectedGenres
-                    .map(
-                      (genre) => InputChip(
-                        label: Text(genre),
-                        onDeleted: () =>
-                            setState(() => _selectedGenres.remove(genre)),
-                      ),
-                    )
-                    .toList(),
-              ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _release,
-              decoration: const InputDecoration(
-                labelText: 'Release status',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'all', child: Text('All')),
-                DropdownMenuItem(
-                  value: 'coming_soon',
-                  child: Text('Coming Soon'),
-                ),
-                DropdownMenuItem(value: 'ongoing', child: Text('Ongoing')),
-                DropdownMenuItem(value: 'hiatus', child: Text('Hiatus')),
-                DropdownMenuItem(value: 'completed', child: Text('Completed')),
-              ],
-              onChanged: (value) => setState(() => _release = value ?? 'all'),
-            ),
-            if (!_public) ...[
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _visibility,
-                decoration: const InputDecoration(
-                  labelText: 'Visibility',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('All')),
-                  DropdownMenuItem(value: 'private', child: Text('Private')),
-                  DropdownMenuItem(value: 'public', child: Text('Public')),
-                ],
-                onChanged: (value) =>
-                    setState(() => _visibility = value ?? 'all'),
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else if (_error != null)
-              TextButton(onPressed: _load, child: Text('$_error — ลองอีกครั้ง'))
-            else if (_results.isEmpty)
-              const Center(child: Text('ไม่พบ Manga ที่ตรงกับตัวกรอง'))
-            else ...[
-              Text(
-                'พบ ${_results.length} เรื่อง',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 8),
-              ..._results.map(
-                (manga) => MangaCard(
-                  manga: manga,
-                  accessToken: widget.user['access_token'].toString(),
-                  onTap: () => _open(manga),
-                ),
-              ),
-            ],
-          ],
+      backgroundColor: colors.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text(
+          'ค้นหา Manga',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
+        backgroundColor: colors.surface,
+        scrolledUnderElevation: 0,
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) => RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              ((constraints.maxWidth - 760) / 2).clamp(20.0, double.infinity),
+              24,
+              ((constraints.maxWidth - 760) / 2).clamp(20.0, double.infinity),
+              40,
+            ),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colors.primaryContainer,
+                      colors.secondaryContainer,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ค้นหาเรื่องที่คุณชอบ',
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: colors.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'เลือกแนวเรื่องและสถานะเพื่อค้นหา Manga',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colors.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Icon(
+                      Icons.travel_explore_rounded,
+                      size: 44,
+                      color: colors.onPrimaryContainer.withValues(alpha: 0.72),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'ตัวกรองการค้นหา',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _query,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'ชื่อเรื่อง ผู้แต่ง หรือแนวเรื่อง',
+                        prefixIcon: const Icon(Icons.search_rounded),
+                        border: fieldBorder,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          avatar: const Icon(Icons.public_rounded, size: 18),
+                          label: const Text('สาธารณะ'),
+                          selected: _public,
+                          onSelected: (_) {
+                            setState(() => _public = true);
+                            _load();
+                          },
+                        ),
+                        ChoiceChip(
+                          avatar: const Icon(
+                            Icons.bookmark_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('ของฉัน'),
+                          selected: !_public,
+                          onSelected: (_) {
+                            setState(() => _public = false);
+                            _load();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _chooseGenres,
+                      icon: const Icon(Icons.category_outlined),
+                      label: Text(
+                        _selectedGenres.isEmpty
+                            ? 'ประเภทการ์ตูน: ทุกแนว'
+                            : 'ประเภทการ์ตูน: เลือก ${_selectedGenres.length} แนว',
+                      ),
+                    ),
+                    if (_selectedGenres.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: _selectedGenres
+                            .map(
+                              (genre) => InputChip(
+                                label: Text(genre),
+                                onDeleted: () => setState(
+                                  () => _selectedGenres.remove(genre),
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      value: _release,
+                      decoration: InputDecoration(
+                        labelText: 'Release status',
+                        prefixIcon: const Icon(Icons.schedule_rounded),
+                        border: fieldBorder,
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All')),
+                        DropdownMenuItem(
+                          value: 'coming_soon',
+                          child: Text('Coming Soon'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ongoing',
+                          child: Text('Ongoing'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'hiatus',
+                          child: Text('Hiatus'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'completed',
+                          child: Text('Completed'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _release = value ?? 'all'),
+                    ),
+                    if (!_public) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _visibility,
+                        decoration: InputDecoration(
+                          labelText: 'Visibility',
+                          prefixIcon: const Icon(Icons.filter_list_rounded),
+                          border: fieldBorder,
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All')),
+                          DropdownMenuItem(
+                            value: 'private',
+                            child: Text('Private'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'public',
+                            child: Text('Public'),
+                          ),
+                        ],
+                        onChanged: (value) =>
+                            setState(() => _visibility = value ?? 'all'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(36),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_error != null)
+                _SearchMessage(
+                  icon: Icons.cloud_off_outlined,
+                  title: 'ค้นหาไม่สำเร็จ',
+                  message: _error!,
+                  onRetry: _load,
+                )
+              else if (results.isEmpty)
+                const _SearchMessage(
+                  icon: Icons.search_off_rounded,
+                  title: 'ไม่พบ Manga',
+                  message: 'ลองเปลี่ยนคำค้นหาหรือตัวกรอง',
+                )
+              else ...[
+                Text(
+                  'ผลการค้นหา · พบ ${results.length} เรื่อง',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...results.map(
+                  (manga) => MangaCard(
+                    manga: manga,
+                    accessToken: widget.user['access_token'].toString(),
+                    onTap: () => _open(manga),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchMessage extends StatelessWidget {
+  const _SearchMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.onRetry,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        border: Border.all(color: colors.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 44, color: colors.primary),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 18),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: const Text('ลองอีกครั้ง'),
+            ),
+          ],
+        ],
       ),
     );
   }

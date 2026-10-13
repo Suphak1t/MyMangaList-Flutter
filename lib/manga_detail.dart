@@ -340,40 +340,115 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
   }
 
   Widget _field(String label, Object? value) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final text = (value ?? '').toString().trim();
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: Theme.of(context).textTheme.labelLarge),
-          const SizedBox(height: 4),
-          Text(text.isEmpty ? '—' : text),
+          Text(
+            label,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text.isEmpty ? '—' : text,
+            style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
+          ),
         ],
       ),
     );
   }
 
   Widget _summaryLine(String label, Object? value) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final text = (value ?? '').toString().trim();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Text.rich(
         TextSpan(
+          style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
           children: [
             TextSpan(
               text: '$label: ',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                color: colors.onSurface,
+              ),
             ),
-            TextSpan(text: text.isEmpty ? '—' : text),
+            TextSpan(
+              text: text.isEmpty ? '—' : text,
+              style: TextStyle(color: colors.onSurfaceVariant),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _summaryContent({bool centered = false}) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: Text(
+            (_manga['title'] ?? '').toString(),
+            textAlign: centered ? TextAlign.center : TextAlign.start,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _summaryLine('ผู้แต่ง', _manga['author']),
+        _summaryLine(
+          'แนวเรื่อง',
+          _manga['genres'] is List
+              ? (_manga['genres'] as List).join(', ')
+              : _manga['genre'],
+        ),
+        _summaryLine(
+          'Visibility',
+          _manga['is_hidden'] == true
+              ? 'Hidden by admin'
+              : mangaVisibilityLabel(_manga['status']),
+        ),
+        _summaryLine(
+          'Release status',
+          mangaReleaseLabel(_manga['release_status']),
+        ),
+        _summaryLine(
+          'จำนวนตอน',
+          _loadingChapters ? _manga['chapter_count'] : _chapters.length,
+        ),
+        _summaryLine('ผู้อ่าน', _manga['view_count'] ?? 0),
+        _summaryLine(
+          'ความนิยม',
+          '★ ${_manga['rating_average'] ?? 0} / 5 (${_manga['rating_count'] ?? 0} คะแนน)',
+        ),
+        if (_manga['username'] != null)
+          _summaryLine('ผู้เพิ่ม', _manga['username']),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
     final readableChapters = _chapters
         .where(
           (chapter) =>
@@ -382,220 +457,332 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         )
         .toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('รายละเอียด Manga')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
+      backgroundColor: colors.surfaceContainerLowest,
+      appBar: AppBar(
+        title: const Text(
+          'รายละเอียด Manga',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        backgroundColor: colors.surface,
+        scrolledUnderElevation: 0,
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) => ListView(
+          padding: EdgeInsets.fromLTRB(
+            ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
+            24,
+            ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
+            48,
+          ),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: colors.outlineVariant),
+              ),
               child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final coverWidth = constraints.maxWidth < 500 ? 110.0 : 190.0;
+                builder: (context, cardConstraints) {
+                  if (cardConstraints.maxWidth < 520) {
+                    return Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: MangaCover(
+                            manga: _manga,
+                            accessToken: widget.accessToken,
+                            width: 136,
+                            height: 186,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _summaryContent(centered: true),
+                      ],
+                    );
+                  }
                   return Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MangaCover(
-                        manga: _manga,
-                        accessToken: widget.accessToken,
-                        width: coverWidth,
-                        height: coverWidth * 1.37,
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              (_manga['title'] ?? '').toString(),
-                              style: Theme.of(context).textTheme.headlineSmall,
-                            ),
-                            const SizedBox(height: 12),
-                            _summaryLine('ผู้แต่ง', _manga['author']),
-                            _summaryLine(
-                              'แนวเรื่อง',
-                              _manga['genres'] is List
-                                  ? (_manga['genres'] as List).join(', ')
-                                  : _manga['genre'],
-                            ),
-                            _summaryLine(
-                              'Visibility',
-                              _manga['is_hidden'] == true
-                                  ? 'Hidden by admin'
-                                  : mangaVisibilityLabel(_manga['status']),
-                            ),
-                            _summaryLine(
-                              'Release status',
-                              mangaReleaseLabel(_manga['release_status']),
-                            ),
-                            _summaryLine(
-                              'จำนวนตอน',
-                              _loadingChapters
-                                  ? _manga['chapter_count']
-                                  : _chapters.length,
-                            ),
-                            _summaryLine('ผู้อ่าน', _manga['view_count'] ?? 0),
-                            _summaryLine(
-                              'ความนิยม',
-                              '★ ${_manga['rating_average'] ?? 0} / 5 (${_manga['rating_count'] ?? 0} คะแนน)',
-                            ),
-                            if (_manga['username'] != null)
-                              _summaryLine('ผู้เพิ่ม', _manga['username']),
-                          ],
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: MangaCover(
+                          manga: _manga,
+                          accessToken: widget.accessToken,
+                          width: 190,
+                          height: 260,
                         ),
                       ),
+                      const SizedBox(width: 24),
+                      Expanded(child: _summaryContent()),
                     ],
                   );
                 },
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          _field('รายละเอียด', _manga['description']),
-          if (!widget.canEdit &&
-              _manga['status'] == 'public' &&
-              _manga['is_hidden'] != true) ...[
-            const Text('ให้คะแนนเรื่องนี้'),
-            Wrap(
-              children: List.generate(
-                5,
-                (index) => IconButton(
-                  tooltip: '${index + 1} ดาว',
-                  onPressed: _busy ? null : () => _rate(index + 1),
-                  icon: Icon(
-                    (index + 1) <= ((_manga['my_rating'] as num?)?.toInt() ?? 0)
-                        ? Icons.star
-                        : Icons.star_border,
+            const SizedBox(height: 20),
+            _field('รายละเอียด', _manga['description']),
+            if (!widget.canEdit &&
+                _manga['status'] == 'public' &&
+                _manga['is_hidden'] != true) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: colors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: colors.outlineVariant),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'ให้คะแนนเรื่องนี้',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      children: List.generate(
+                        5,
+                        (index) => IconButton(
+                          tooltip: '${index + 1} ดาว',
+                          onPressed: _busy ? null : () => _rate(index + 1),
+                          color: colors.primary,
+                          icon: Icon(
+                            (index + 1) <=
+                                    ((_manga['my_rating'] as num?)?.toInt() ??
+                                        0)
+                                ? Icons.star_rounded
+                                : Icons.star_border_rounded,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CommentsPage(
+                    mangaId: _manga['manga_id'] as int,
+                    title: 'ความคิดเห็นของเรื่อง',
+                    accessToken: widget.accessToken,
                   ),
                 ),
               ),
+              icon: const Icon(Icons.comment_outlined),
+              label: const Text('ความคิดเห็นของเรื่อง'),
             ),
-          ],
-          OutlinedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => CommentsPage(
-                  mangaId: _manga['manga_id'] as int,
-                  title: 'ความคิดเห็นของเรื่อง',
-                  accessToken: widget.accessToken,
-                ),
+            if (!widget.canEdit &&
+                widget.canReport &&
+                _manga['status'] == 'public') ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _report,
+                icon: const Icon(Icons.flag_outlined),
+                label: const Text('รีพอร์ต Manga'),
               ),
-            ),
-            icon: const Icon(Icons.comment_outlined),
-            label: const Text('ความคิดเห็นของเรื่อง'),
-          ),
-          if (!widget.canEdit &&
-              widget.canReport &&
-              _manga['status'] == 'public')
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _report,
-              icon: const Icon(Icons.flag_outlined),
-              label: const Text('รีพอร์ต Manga'),
-            ),
-          const SizedBox(height: 12),
-          if (_busy) const Center(child: CircularProgressIndicator()),
-          if (widget.canEdit) const SizedBox(height: 12),
-          if (widget.canEdit)
+            ],
+            const SizedBox(height: 12),
+            if (_busy) const Center(child: CircularProgressIndicator()),
+            if (widget.canEdit) const SizedBox(height: 12),
+            if (widget.canEdit)
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _edit,
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('แก้ไข'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _delete,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('ลบ'),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 24),
             Row(
               children: [
-                FilledButton.icon(
-                  onPressed: _busy ? null : _edit,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: const Text('แก้ไข'),
+                Expanded(
+                  child: Text(
+                    'ตอน',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _delete,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('ลบ'),
-                ),
+                if (widget.canEdit)
+                  FilledButton.icon(
+                    onPressed: _busy ? null : () => _saveChapter(),
+                    icon: const Icon(Icons.add),
+                    label: const Text('เพิ่มตอน'),
+                  ),
               ],
             ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'ตอน',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              if (widget.canEdit)
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _saveChapter(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('เพิ่มตอน'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (_loadingChapters)
-            const Center(child: CircularProgressIndicator())
-          else if (_chapterError != null)
-            TextButton(
-              onPressed: _loadChapters,
-              child: Text('โหลดตอนไม่สำเร็จ: $_chapterError — ลองอีกครั้ง'),
-            )
-          else if (_chapters.isEmpty)
-            const Text('ยังไม่มีตอน')
-          else
-            ..._chapters.map((chapter) {
-              final canRead =
-                  chapter['content_type'] == 'pdf' ||
-                  chapter['content_type'] == 'images';
-              final label =
-                  'ตอนที่ ${chapter['chapter_number']}${(chapter['title'] ?? '').toString().isEmpty ? '' : ' · ${chapter['title']}'}';
-              return Card(
-                child: ListTile(
-                  title: Text(label),
-                  subtitle: Text(
-                    chapter['is_published'] == true
-                        ? 'เผยแพร่แล้ว'
-                        : 'ฉบับร่าง',
+            const SizedBox(height: 12),
+            if (_loadingChapters)
+              const Padding(
+                padding: EdgeInsets.all(36),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_chapterError != null)
+              _ChapterMessage(
+                icon: Icons.cloud_off_outlined,
+                title: 'โหลดตอนไม่สำเร็จ',
+                message: _chapterError!,
+                onRetry: _loadChapters,
+              )
+            else if (_chapters.isEmpty)
+              const _ChapterMessage(
+                icon: Icons.menu_book_outlined,
+                title: 'ยังไม่มีตอน',
+                message: 'ตอนของเรื่องจะแสดงที่นี่',
+              )
+            else
+              ..._chapters.map((chapter) {
+                final canRead =
+                    chapter['content_type'] == 'pdf' ||
+                    chapter['content_type'] == 'images';
+                final label =
+                    'ตอนที่ ${chapter['chapter_number']}${(chapter['title'] ?? '').toString().isEmpty ? '' : ' · ${chapter['title']}'}';
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  color: colors.surface,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    side: BorderSide(color: colors.outlineVariant),
                   ),
-                  onTap: canRead
-                      ? () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => MangaReaderPage(
-                              mangaId: _manga['manga_id'] as int,
-                              chapterId: chapter['chapter_id'] as int,
-                              title: label,
-                              accessToken: widget.accessToken,
-                              chapters: readableChapters,
-                              chapterIndex: readableChapters.indexWhere(
-                                (item) =>
-                                    item['chapter_id'] == chapter['chapter_id'],
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 6,
+                    ),
+                    title: Text(
+                      label,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    subtitle: Text(
+                      chapter['is_published'] == true
+                          ? 'เผยแพร่แล้ว'
+                          : 'ฉบับร่าง',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    onTap: canRead
+                        ? () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => MangaReaderPage(
+                                mangaId: _manga['manga_id'] as int,
+                                chapterId: chapter['chapter_id'] as int,
+                                title: label,
+                                accessToken: widget.accessToken,
+                                chapters: readableChapters,
+                                chapterIndex: readableChapters.indexWhere(
+                                  (item) =>
+                                      item['chapter_id'] ==
+                                      chapter['chapter_id'],
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      : null,
-                  trailing: widget.canEdit
-                      ? Wrap(
-                          spacing: 0,
-                          children: [
-                            IconButton(
-                              tooltip: 'แก้ไขตอน',
-                              onPressed: _busy
-                                  ? null
-                                  : () => _saveChapter(chapter),
-                              icon: const Icon(Icons.edit_outlined),
-                            ),
-                            IconButton(
-                              tooltip: 'ลบตอน',
-                              onPressed: _busy
-                                  ? null
-                                  : () => _deleteChapter(chapter),
-                              icon: const Icon(Icons.delete_outline),
-                            ),
-                          ],
-                        )
-                      : null,
-                ),
-              );
-            }),
+                          )
+                        : null,
+                    trailing: widget.canEdit
+                        ? Wrap(
+                            spacing: 0,
+                            children: [
+                              IconButton(
+                                tooltip: 'แก้ไขตอน',
+                                onPressed: _busy
+                                    ? null
+                                    : () => _saveChapter(chapter),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'ลบตอน',
+                                onPressed: _busy
+                                    ? null
+                                    : () => _deleteChapter(chapter),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          )
+                        : null,
+                  ),
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterMessage extends StatelessWidget {
+  const _ChapterMessage({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.onRetry,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colors.outlineVariant),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 44, color: colors.primary),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colors.onSurfaceVariant,
+            ),
+          ),
+          if (onRetry != null) ...[
+            const SizedBox(height: 18),
+            OutlinedButton(
+              onPressed: onRetry,
+              child: const Text('ลองอีกครั้ง'),
+            ),
+          ],
         ],
       ),
     );
