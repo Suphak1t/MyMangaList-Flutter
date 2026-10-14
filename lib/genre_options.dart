@@ -1,4 +1,5 @@
 // Keep this list in sync with genre_options.php in the API.
+/// รายการแนวเรื่องทั้งหมดสำหรับฟอร์มและตัวกรอง แม้ยังไม่มีเรื่องแนวนั้นในระบบ
 const mangaGenres = <String>[
   'Action',
   'Adventure',

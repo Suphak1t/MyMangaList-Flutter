@@ -12,6 +12,7 @@ import 'manga_card.dart';
 import 'manga_cover.dart';
 import 'manga_reader.dart';
 
+/// หน้ารายละเอียดเรื่อง พร้อมตอน คะแนน คอมเมนต์ และการจัดการของเจ้าของ
 class MangaDetailPage extends StatefulWidget {
   const MangaDetailPage({
     super.key,
@@ -31,6 +32,7 @@ class MangaDetailPage extends StatefulWidget {
 }
 
 class _MangaDetailPageState extends State<MangaDetailPage> {
+  // สำเนาข้อมูลเรื่องสำหรับอัปเดตจอทันที พร้อมรายการตอนและสถานะกำลังทำงาน
   late Map<String, dynamic> _manga = Map<String, dynamic>.from(widget.manga);
   List<Map<String, dynamic>> _chapters = [];
   bool _loadingChapters = true;
@@ -43,17 +45,18 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     _loadChapters();
   }
 
+  // ตัวช่วย POST JSON ที่แนบ token ตรวจผล success และคืนข้อมูลจาก API
   Future<Map<String, dynamic>> _request(
     String endpoint,
     Map<String, dynamic> body,
   ) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
-      headers: {
+      headers: { // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
         'Content-Type': 'application/json; charset=UTF-8',
         'Authorization': 'Bearer ${widget.accessToken}',
       },
-      body: jsonEncode(body),
+      body: jsonEncode(body), // แปลงข้อมูลเป็น JSON สำหรับส่งให้ PHP API
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode != 200 || data['success'] != true) {
@@ -62,13 +65,14 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     return data;
   }
 
+  // ขอตอนของเรื่องปัจจุบัน แล้วนำ chapters[] มาแสดงตามสิทธิ์ที่ server ส่ง
   Future<void> _loadChapters() async {
     try {
       final response = await http.get(
         Uri.parse(
           '${ApiConfig.baseUrl}/chapters_get.php?manga_id=${_manga['manga_id']}',
         ),
-        headers: {'Authorization': 'Bearer ${widget.accessToken}'},
+        headers: {'Authorization': 'Bearer ${widget.accessToken}'}, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
       );
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode != 200 || data['success'] != true) {
@@ -91,6 +95,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // แปลงข้อผิดพลาดเป็นข้อความสั้นใน SnackBar
   void _showError(Object error) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -98,6 +103,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     );
   }
 
+  // เปิดฟอร์มพร้อมข้อมูลเดิม บันทึก metadata แล้วอัปโหลดปกใหม่ถ้าเลือก
   Future<void> _edit() async {
     final changes = await showDialog<MangaFormResult>(
       context: context,
@@ -142,7 +148,9 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // โฟลว์เพิ่ม/แก้ตอน: เปิดฟอร์ม → สร้างตอนถ้าจำเป็น → อัปโหลดไฟล์ → เผยแพร่
   Future<void> _saveChapter([Map<String, dynamic>? oldChapter]) async {
+    // เสนอเลขตอนถัดจากเลขสูงสุดที่มี ไม่อิงจำนวนแถวอย่างเดียว
     final nextNumber =
         _chapters.fold<int>(0, (max, chapter) {
           final number = chapter['chapter_number'] as int;
@@ -167,6 +175,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     bool created = false;
     try {
       int chapterId;
+      // ตอนใหม่ต้องขอ chapter_id ก่อน จึงผูกไฟล์กับตอนนั้นได้
       if (oldChapter == null) {
         final data = await _request('chapter_add.php', {
           'manga_id': _manga['manga_id'],
@@ -178,6 +187,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
       } else {
         chapterId = oldChapter['chapter_id'] as int;
       }
+      // แก้ชื่อหรือเลขตอนอย่างเดียวได้โดยไม่อัปโหลดไฟล์ซ้ำ
       if (result.files.isNotEmpty) {
         await uploadChapterFiles(chapterId, result, widget.accessToken);
       }
@@ -204,6 +214,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // ถามยืนยันก่อนลบตอน และโหลดรายการตอนใหม่เมื่อสำเร็จ
   Future<void> _deleteChapter(Map<String, dynamic> chapter) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -212,11 +223,11 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         content: Text('ต้องการลบตอนที่ ${chapter['chapter_number']} หรือไม่?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, false), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, true), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ลบ'),
           ),
         ],
@@ -236,6 +247,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // รับเหตุผลจากผู้อ่านแล้วส่งเรื่องให้คิวรีพอร์ตของ admin
   Future<void> _report() async {
     final formKey = GlobalKey<FormState>();
     String reasonText = '';
@@ -246,12 +258,12 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         content: Form(
           key: formKey,
           child: TextFormField(
-            onChanged: (value) => reasonText = value,
-            minLines: 3,
-            maxLines: 5,
-            maxLength: 1000,
+            onChanged: (value) => reasonText = value, // ทำงานทันทีเมื่อค่าช่องหรือรายการเลือกเปลี่ยน
+            minLines: 3, // จำนวนบรรทัดขั้นต่ำของช่องข้อความ
+            maxLines: 5, // จำนวนบรรทัดสูงสุดของช่องข้อความ
+            maxLength: 1000, // จำกัดจำนวนตัวอักษรที่พิมพ์ได้
             decoration: const InputDecoration(
-              labelText: 'เหตุผลที่ต้องการให้ผู้ดูแลตรวจสอบ',
+              labelText: 'เหตุผลที่ต้องการให้ผู้ดูแลตรวจสอบ', // ข้อความชื่อช่องที่แสดงในฟอร์ม
               border: OutlineInputBorder(),
             ),
             validator: (value) => (value?.trim().length ?? 0) < 10
@@ -261,11 +273,11 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
+            onPressed: () => Navigator.pop(dialogContext), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () { // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
               if (formKey.currentState!.validate()) {
                 Navigator.pop(dialogContext, reasonText.trim());
               }
@@ -293,6 +305,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // ส่งคะแนนดาวของบัญชีนี้แล้วรวมค่าคะแนนที่ API ตอบกลับเข้าข้อมูลบนจอ
   Future<void> _rate(int rating) async {
     setState(() => _busy = true);
     try {
@@ -309,6 +322,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // ถามยืนยันก่อนลบทั้งเรื่อง; PHP เป็นผู้ตรวจสิทธิ์เจ้าของอีกชั้น
   Future<void> _delete() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -317,11 +331,11 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
         content: Text('ต้องการลบ “${_manga['title']}” หรือไม่?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, false), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, true), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ลบ'),
           ),
         ],
@@ -339,20 +353,21 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     }
   }
 
+  // แถวข้อมูลเรื่องในส่วนคำอธิบายด้านล่าง
   Widget _field(String label, Object? value) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final text = (value ?? '').toString().trim();
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
+      width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+      padding: const EdgeInsets.all(20), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+      decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
         color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
         border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
         children: [
           Text(
             label,
@@ -360,7 +375,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 10), // เว้นระยะห่างแนวตั้ง 10 พิกเซล
           Text(
             text.isEmpty ? '—' : text,
             style: theme.textTheme.bodyLarge?.copyWith(height: 1.5),
@@ -370,12 +385,13 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     );
   }
 
+  // แถวสรุปสั้นข้างภาพปก เช่น ผู้แต่งและสถานะ
   Widget _summaryLine(String label, Object? value) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final text = (value ?? '').toString().trim();
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 10), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
       child: Text.rich(
         TextSpan(
           style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
@@ -397,13 +413,14 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
     );
   }
 
+  // รวมข้อมูลสรุปที่ใช้ได้ทั้งหน้าจอกว้างและหน้าจอแคบ
   Widget _summaryContent({bool centered = false}) {
     final theme = Theme.of(context);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
       children: [
         SizedBox(
-          width: double.infinity,
+          width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
           child: Text(
             (_manga['title'] ?? '').toString(),
             textAlign: centered ? TextAlign.center : TextAlign.start,
@@ -412,7 +429,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
         _summaryLine('ผู้แต่ง', _manga['author']),
         _summaryLine(
           'แนวเรื่อง',
@@ -449,6 +466,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    // เก็บเฉพาะตอนที่มีไฟล์อ่านได้ไว้ใช้คำนวณตำแหน่งตอนก่อนหน้า/ตอนถัดไป
     final readableChapters = _chapters
         .where(
           (chapter) =>
@@ -468,7 +486,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) => ListView(
-          padding: EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB( // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
             ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
             24,
             ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
@@ -476,66 +494,68 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
           ),
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(20), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+              decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                 color: colors.surface,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(24), // ความโค้งของมุมกรอบ
                 border: Border.all(color: colors.outlineVariant),
               ),
               child: LayoutBuilder(
                 builder: (context, cardConstraints) {
+                  // จอแคบวางปกเหนือข้อมูล; จอกว้างวางข้อมูลข้างปก
                   if (cardConstraints.maxWidth < 520) {
                     return Column(
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
                           child: MangaCover(
                             manga: _manga,
                             accessToken: widget.accessToken,
-                            width: 136,
-                            height: 186,
+                            width: 136, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                            height: 186, // ความสูงของพื้นที่แสดงหรือรูปภาพ
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 20), // เว้นระยะห่างแนวตั้ง 20 พิกเซล
                         _summaryContent(centered: true),
                       ],
                     );
                   }
                   return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
                         child: MangaCover(
                           manga: _manga,
                           accessToken: widget.accessToken,
-                          width: 190,
-                          height: 260,
+                          width: 190, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                          height: 260, // ความสูงของพื้นที่แสดงหรือรูปภาพ
                         ),
                       ),
-                      const SizedBox(width: 24),
+                      const SizedBox(width: 24), // เว้นระยะห่างแนวนอน 24 พิกเซล
                       Expanded(child: _summaryContent()),
                     ],
                   );
                 },
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 20), // เว้นระยะห่างแนวตั้ง 20 พิกเซล
             _field('รายละเอียด', _manga['description']),
+            // ผู้อ่านให้ดาวได้เฉพาะเรื่องสาธารณะที่ไม่ถูกซ่อน
             if (!widget.canEdit &&
                 _manga['status'] == 'public' &&
                 _manga['is_hidden'] != true) ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
+                width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                padding: const EdgeInsets.all(20), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+                decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                   color: colors.surface,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
                   border: Border.all(color: colors.outlineVariant),
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                   children: [
                     Text(
                       'ให้คะแนนเรื่องนี้',
@@ -543,13 +563,13 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
                     Wrap(
                       children: List.generate(
                         5,
                         (index) => IconButton(
                           tooltip: '${index + 1} ดาว',
-                          onPressed: _busy ? null : () => _rate(index + 1),
+                          onPressed: _busy ? null : () => _rate(index + 1), // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                           color: colors.primary,
                           icon: Icon(
                             (index + 1) <=
@@ -565,9 +585,9 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
             OutlinedButton.icon(
-              onPressed: () => Navigator.push(
+              onPressed: () => Navigator.push( // เปิดหน้าใหม่เมื่อกดปุ่ม
                 context,
                 MaterialPageRoute(
                   builder: (context) => CommentsPage(
@@ -580,37 +600,39 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
               icon: const Icon(Icons.comment_outlined),
               label: const Text('ความคิดเห็นของเรื่อง'),
             ),
+            // แสดงปุ่มรีพอร์ตเมื่อหน้าที่เปิดอนุญาตและเรื่องเป็นสาธารณะ
             if (!widget.canEdit &&
                 widget.canReport &&
                 _manga['status'] == 'public') ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
               OutlinedButton.icon(
-                onPressed: _busy ? null : _report,
+                onPressed: _busy ? null : _report, // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                 icon: const Icon(Icons.flag_outlined),
                 label: const Text('รีพอร์ต Manga'),
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
             if (_busy) const Center(child: CircularProgressIndicator()),
-            if (widget.canEdit) const SizedBox(height: 12),
+            if (widget.canEdit) const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
+            // ปุ่มแก้ไขและลบเรื่องมีเฉพาะฝั่งเจ้าของใน UI
             if (widget.canEdit)
               Wrap(
-                spacing: 12,
-                runSpacing: 8,
+                spacing: 12, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
+                runSpacing: 8, // ระยะห่างระหว่างบรรทัดเมื่อ Wrap ขึ้นบรรทัดใหม่
                 children: [
                   FilledButton.icon(
-                    onPressed: _busy ? null : _edit,
+                    onPressed: _busy ? null : _edit, // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('แก้ไข'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: _busy ? null : _delete,
+                    onPressed: _busy ? null : _delete, // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                     icon: const Icon(Icons.delete_outline),
                     label: const Text('ลบ'),
                   ),
                 ],
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 24), // เว้นระยะห่างแนวตั้ง 24 พิกเซล
             Row(
               children: [
                 Expanded(
@@ -623,16 +645,17 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
                 ),
                 if (widget.canEdit)
                   FilledButton.icon(
-                    onPressed: _busy ? null : () => _saveChapter(),
+                    onPressed: _busy ? null : () => _saveChapter(), // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                     icon: const Icon(Icons.add),
                     label: const Text('เพิ่มตอน'),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
+            // พื้นที่รายการตอนแยกสถานะโหลด ผิดพลาด ว่าง และมีข้อมูล
             if (_loadingChapters)
               const Padding(
-                padding: EdgeInsets.all(36),
+                padding: EdgeInsets.all(36), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
                 child: Center(child: CircularProgressIndicator()),
               )
             else if (_chapterError != null)
@@ -650,21 +673,22 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
               )
             else
               ..._chapters.map((chapter) {
+                // ตอนที่ยังไม่มีไฟล์แสดงได้ แต่กดเปิดหน้าอ่านไม่ได้
                 final canRead =
                     chapter['content_type'] == 'pdf' ||
                     chapter['content_type'] == 'images';
                 final label =
                     'ตอนที่ ${chapter['chapter_number']}${(chapter['title'] ?? '').toString().isEmpty ? '' : ' · ${chapter['title']}'}';
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
+                  margin: const EdgeInsets.only(bottom: 10), // ระยะว่างด้านนอกระหว่าง widget กับบริเวณรอบข้าง
                   color: colors.surface,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16), // ความโค้งของมุมกรอบ
                     side: BorderSide(color: colors.outlineVariant),
                   ),
                   child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
+                    contentPadding: const EdgeInsets.symmetric( // ระยะว่างภายในส่วนเนื้อหาของ widget
                       horizontal: 18,
                       vertical: 6,
                     ),
@@ -703,7 +727,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
                         : null,
                     trailing: widget.canEdit
                         ? Wrap(
-                            spacing: 0,
+                            spacing: 0, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
                             children: [
                               IconButton(
                                 tooltip: 'แก้ไขตอน',
@@ -732,6 +756,7 @@ class _MangaDetailPageState extends State<MangaDetailPage> {
   }
 }
 
+/// ข้อความแทนรายการตอนเมื่อไม่มีตอนหรือโหลดผิดพลาด
 class _ChapterMessage extends StatelessWidget {
   const _ChapterMessage({
     required this.icon,
@@ -750,17 +775,17 @@ class _ChapterMessage extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      decoration: BoxDecoration(
+      width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+      decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
         color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
         border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         children: [
           Icon(icon, size: 44, color: colors.primary),
-          const SizedBox(height: 16),
+          const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
           Text(
             title,
             textAlign: TextAlign.center,
@@ -768,7 +793,7 @@ class _ChapterMessage extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 6), // เว้นระยะห่างแนวตั้ง 6 พิกเซล
           Text(
             message,
             textAlign: TextAlign.center,
@@ -777,9 +802,9 @@ class _ChapterMessage extends StatelessWidget {
             ),
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 18), // เว้นระยะห่างแนวตั้ง 18 พิกเซล
             OutlinedButton(
-              onPressed: onRetry,
+              onPressed: onRetry, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
               child: const Text('ลองอีกครั้ง'),
             ),
           ],

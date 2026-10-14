@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'config.dart';
 
+/// หน้าเดียวใช้กับคอมเมนต์ระดับเรื่องและระดับตอน; chapterId ว่างคือระดับเรื่อง
 class CommentsPage extends StatefulWidget {
   const CommentsPage({
     super.key,
@@ -24,12 +25,14 @@ class CommentsPage extends StatefulWidget {
 }
 
 class _CommentsPageState extends State<CommentsPage> {
+  // State เก็บข้อความที่พิมพ์ รายการคอมเมนต์ และสถานะโหลด/บันทึก
   final _text = TextEditingController();
   List<Map<String, dynamic>> _comments = [];
   bool _loading = true;
   bool _busy = false;
   String? _error;
 
+  // ส่วนหัวร่วมของคำขอคอมเมนต์ รวม token สำหรับตรวจผู้ใช้
   Map<String, String> get _headers => {
     'Content-Type': 'application/json; charset=UTF-8',
     'Authorization': 'Bearer ${widget.accessToken}',
@@ -47,10 +50,11 @@ class _CommentsPageState extends State<CommentsPage> {
     super.dispose();
   }
 
+  // ขอคอมเมนต์ตาม manga_id และเพิ่ม chapter_id เฉพาะหน้าคอมเมนต์ของตอน
   Future<void> _load() async {
     try {
       final uri = Uri.parse('${ApiConfig.baseUrl}/comments_get.php').replace(
-        queryParameters: {
+        queryParameters: { // แนบค่าค้นหาหรือรหัสข้อมูลใน URL แบบ GET
           'manga_id': '${widget.mangaId}',
           if (widget.chapterId != null) 'chapter_id': '${widget.chapterId}',
         },
@@ -77,11 +81,12 @@ class _CommentsPageState extends State<CommentsPage> {
     }
   }
 
+  // ตัวช่วยส่ง JSON สำหรับเพิ่มหรือลบคอมเมนต์และตรวจผล API
   Future<void> _post(String endpoint, Map<String, dynamic> body) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
-      headers: _headers,
-      body: jsonEncode(body),
+      headers: _headers, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
+      body: jsonEncode(body), // แปลงข้อมูลเป็น JSON สำหรับส่งให้ PHP API
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode != 200 || data['success'] != true) {
@@ -89,6 +94,7 @@ class _CommentsPageState extends State<CommentsPage> {
     }
   }
 
+  // แสดงข้อความผิดพลาดโดยไม่ปิดหน้าคอมเมนต์
   void _showError(Object error) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -96,6 +102,7 @@ class _CommentsPageState extends State<CommentsPage> {
     );
   }
 
+  // ส่งข้อความที่ตัดช่องว่างแล้ว ล้างช่องกรอก และโหลดรายการใหม่
   Future<void> _add() async {
     final body = _text.text.trim();
     if (body.isEmpty || _busy) return;
@@ -115,6 +122,7 @@ class _CommentsPageState extends State<CommentsPage> {
     }
   }
 
+  // ลบคอมเมนต์ตาม id แล้วโหลดรายการใหม่; server ตรวจสิทธิ์ซ้ำ
   Future<void> _delete(int commentId) async {
     setState(() => _busy = true);
     try {
@@ -138,16 +146,17 @@ class _CommentsPageState extends State<CommentsPage> {
               : _error != null
               ? Center(
                   child: TextButton(
-                    onPressed: _load,
+                    onPressed: _load, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
                     child: Text('$_error — ลองอีกครั้ง'),
                   ),
                 )
               : _comments.isEmpty
               ? const Center(child: Text('ยังไม่มีความคิดเห็น'))
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
-                  itemCount: _comments.length,
-                  itemBuilder: (context, index) {
+                  padding: const EdgeInsets.all(12), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+                  itemCount: _comments.length, // จำนวนรายการที่ ListView หรือ PageView ต้องสร้าง
+                  itemBuilder: (context, index) { // สร้าง widget ของแต่ละรายการตาม index
+                    // แต่ละแถวใช้ can_delete จาก API กำหนดว่าจะมีปุ่มลบหรือไม่
                     final comment = _comments[index];
                     return Card(
                       child: ListTile(
@@ -170,23 +179,23 @@ class _CommentsPageState extends State<CommentsPage> {
         ),
         SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _text,
-                    maxLength: 1000,
-                    maxLines: 2,
+                    controller: _text, // เก็บข้อความคอมเมนต์ก่อนส่ง
+                    maxLength: 1000, // จำกัดจำนวนตัวอักษรที่พิมพ์ได้
+                    maxLines: 2, // จำนวนบรรทัดสูงสุดของช่องข้อความ
                     decoration: const InputDecoration(
-                      hintText: 'เขียนความคิดเห็น',
+                      hintText: 'เขียนความคิดเห็น', // ข้อความตัวอย่างก่อนผู้ใช้พิมพ์
                       border: OutlineInputBorder(),
                     ),
                   ),
                 ),
                 IconButton(
                   tooltip: 'ส่งความคิดเห็น',
-                  onPressed: _busy ? null : _add,
+                  onPressed: _busy ? null : _add, // ปิดปุ่มชั่วคราวเมื่อยังไม่พร้อม แล้วเรียกคำสั่งเมื่อกดได้
                   icon: const Icon(Icons.send),
                 ),
               ],

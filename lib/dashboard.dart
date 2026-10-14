@@ -12,6 +12,7 @@ import 'manga_detail.dart';
 import 'manga_search.dart';
 import 'theme_mode.dart';
 
+/// หน้าหลักรับข้อมูลบัญชีและ token จาก Login พร้อมปุ่มออกจากระบบ
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key, required this.user, this.onLogout});
 
@@ -23,8 +24,10 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  // ค่าที่ใช้กรองความเป็นส่วนตัวของ Manga ในแท็บของฉัน
   static const _statuses = ['private', 'public'];
 
+  // State แยกรายการที่แสดง รายการ Top 10 ตัวกรอง และสถานะการโหลด
   final _searchController = TextEditingController();
   List<Map<String, dynamic>> _manga = [];
   List<Map<String, dynamic>> _topManga = [];
@@ -45,6 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
     super.dispose();
   }
 
+  // ขอรายการตามแท็บและรายการสาธารณะ แล้วปรับ State ให้การ์ดแสดงข้อมูลใหม่
   Future<void> _loadManga() async {
     setState(() {
       _isLoading = true;
@@ -55,16 +59,17 @@ class _DashboardPageState extends State<DashboardPage> {
       final headers = {
         'Authorization': 'Bearer ${widget.user['access_token']}',
       };
+      // ขอสองรายการพร้อมกัน: รายการของแท็บปัจจุบันและรายการสำหรับ Top 10
       final responses = await Future.wait([
         http.get(
           Uri.parse(
             '${ApiConfig.baseUrl}/manga_get.php${_showPublic ? '?scope=public' : ''}',
           ),
-          headers: headers,
+          headers: headers, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
         ),
         http.get(
           Uri.parse('${ApiConfig.baseUrl}/manga_get.php?scope=public'),
-          headers: headers,
+          headers: headers, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
         ),
       ]);
       final data = jsonDecode(responses[0].body) as Map<String, dynamic>;
@@ -79,6 +84,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final top = (publicData['manga'] as List<dynamic>? ?? [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList();
+      // จัด Top 10 ตามยอดชมก่อน; คะแนนเฉลี่ยใช้ตัดสินเมื่อยอดชมเท่ากัน
       top.sort((a, b) {
         final views = (b['view_count'] as num).compareTo(
           a['view_count'] as num,
@@ -110,6 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // เปิดฟอร์มเพิ่มเรื่อง ส่ง metadata ก่อน แล้วค่อยอัปโหลดภาพปกถ้ามี
   Future<void> _addManga() async {
     final manga = await showDialog<MangaFormResult>(
       context: context,
@@ -120,11 +127,11 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final response = await http.post(
         Uri.parse('${ApiConfig.baseUrl}/manga_add.php'),
-        headers: {
+        headers: { // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
           'Content-Type': 'application/json; charset=UTF-8',
           'Authorization': 'Bearer ${widget.user['access_token']}',
         },
-        body: jsonEncode(manga.fields),
+        body: jsonEncode(manga.fields), // แปลงข้อมูลเป็น JSON สำหรับส่งให้ PHP API
       );
       final data = jsonDecode(response.body) as Map<String, dynamic>;
 
@@ -132,6 +139,7 @@ class _DashboardPageState extends State<DashboardPage> {
         throw Exception(data['message'] ?? 'เพิ่ม Manga ไม่สำเร็จ');
       }
 
+      // ภาพปกเป็นคำขอแยกจากการสร้าง Manga; หากพลาด เรื่องยังถูกสร้างแล้ว
       if (manga.coverFile != null) {
         try {
           await uploadMangaCover(
@@ -166,6 +174,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  // กรองรายการที่ API ส่งมาแล้วตามสถานะและข้อความค้นหาของแท็บของฉัน
   List<Map<String, dynamic>> get _visibleManga {
     final query = _showPublic
         ? ''
@@ -204,10 +213,11 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: colors.surface,
         scrolledUnderElevation: 0,
         actions: [
+          // ปุ่มค้นหาแยกมีเฉพาะแท็บสาธารณะ
           if (_showPublic)
             IconButton(
               tooltip: 'ค้นหา Manga',
-              onPressed: () => Navigator.push(
+              onPressed: () => Navigator.push( // เปิดหน้าใหม่เมื่อกดปุ่ม
                 context,
                 MaterialPageRoute(
                   builder: (context) => MangaSearchPage(user: widget.user),
@@ -217,13 +227,14 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           IconButton(
             tooltip: 'สลับธีมมืด',
-            onPressed: toggleAppTheme,
+            onPressed: toggleAppTheme, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
             icon: const Icon(Icons.dark_mode_outlined),
           ),
+          // การเห็นปุ่ม Admin เป็นเพียง UI; API ตรวจ role อีกครั้ง
           if (isAdmin)
             IconButton(
               tooltip: 'จัดการผู้ใช้',
-              onPressed: () => Navigator.push(
+              onPressed: () => Navigator.push( // เปิดหน้าใหม่เมื่อกดปุ่ม
                 context,
                 MaterialPageRoute(
                   builder: (context) => AdminDashboardPage(user: widget.user),
@@ -233,13 +244,13 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           IconButton(
             tooltip: 'ออกจากระบบ',
-            onPressed: widget.onLogout,
+            onPressed: widget.onLogout, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
             icon: const Icon(Icons.logout),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addManga,
+        onPressed: _addManga, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
         icon: const Icon(Icons.add_rounded),
         label: const Text('เพิ่ม Manga'),
       ),
@@ -247,7 +258,7 @@ class _DashboardPageState extends State<DashboardPage> {
         builder: (context, constraints) => RefreshIndicator(
           onRefresh: _loadManga,
           child: ListView(
-            padding: EdgeInsets.fromLTRB(
+            padding: EdgeInsets.fromLTRB( // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
               ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
               24,
               ((constraints.maxWidth - 920) / 2).clamp(20.0, double.infinity),
@@ -258,7 +269,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 username: (widget.user['username'] ?? 'นักอ่าน').toString(),
                 showPublic: _showPublic,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 24), // เว้นระยะห่างแนวตั้ง 24 พิกเซล
               Row(
                 children: [
                   Text(
@@ -269,10 +280,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
+              // ชิปสองตัวสลับขอบเขตข้อมูลแล้วโหลดรายการจาก API ใหม่
               Wrap(
-                spacing: 10,
-                runSpacing: 8,
+                spacing: 10, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
+                runSpacing: 8, // ระยะห่างระหว่างบรรทัดเมื่อ Wrap ขึ้นบรรทัดใหม่
                 children: [
                   ChoiceChip(
                     avatar: const Icon(
@@ -280,8 +292,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       size: 18,
                     ),
                     label: const Text('ของฉัน'),
-                    selected: !_showPublic,
-                    onSelected: (_) {
+                    selected: !_showPublic, // กำหนดว่าชิปนี้อยู่ในสถานะเลือกหรือไม่
+                    onSelected: (_) { // ทำงานเมื่อเลือกชิปนี้
                       setState(() {
                         _showPublic = false;
                         _selectedStatus = 'All';
@@ -292,8 +304,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   ChoiceChip(
                     avatar: const Icon(Icons.public_rounded, size: 18),
                     label: const Text('สาธารณะ'),
-                    selected: _showPublic,
-                    onSelected: (_) {
+                    selected: _showPublic, // กำหนดว่าชิปนี้อยู่ในสถานะเลือกหรือไม่
+                    onSelected: (_) { // ทำงานเมื่อเลือกชิปนี้
                       setState(() {
                         _showPublic = true;
                         _selectedStatus = 'All';
@@ -303,34 +315,34 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 20), // เว้นระยะห่างแนวตั้ง 20 พิกเซล
               Row(
                 children: [
                   Expanded(
                     child: _SummaryTile(
                       label: 'ทั้งหมด',
-                      value: '${_manga.length}',
+                      value: '${_manga.length}', // แสดงจำนวน Manga ทั้งหมดในแท็บปัจจุบัน
                       icon: Icons.auto_stories_outlined,
                       color: colors.primary,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 12), // เว้นระยะห่างแนวนอน 12 พิกเซล
                   Expanded(
                     child: _SummaryTile(
                       label: 'สาธารณะ',
-                      value: '$publicCount',
+                      value: '$publicCount', // แสดงจำนวนเรื่องสาธารณะที่นับได้
                       icon: Icons.menu_book_outlined,
                       color: colors.tertiary,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 28), // เว้นระยะห่างแนวตั้ง 28 พิกเซล
               if (_showPublic) ...[
                 SizedBox(
-                  width: double.infinity,
+                  width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
                   child: FilledButton.icon(
-                    onPressed: () => Navigator.push(
+                    onPressed: () => Navigator.push( // เปิดหน้าใหม่เมื่อกดปุ่ม
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
@@ -341,8 +353,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     label: const Text('ไปหน้าค้นหาและกรอง Manga'),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 28), // เว้นระยะห่างแนวตั้ง 28 พิกเซล
               ],
+              // Top 10 ใช้รายการสาธารณะที่ _loadManga เรียงไว้แล้ว
               if (_showPublic && _topManga.isNotEmpty) ...[
                 Text(
                   'Top 10 ยอดผู้อ่าน',
@@ -350,18 +363,18 @@ class _DashboardPageState extends State<DashboardPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                 ..._topManga.asMap().entries.map(
                   (entry) => Row(
                     children: [
                       Container(
-                        width: 34,
-                        height: 34,
-                        alignment: Alignment.center,
-                        margin: const EdgeInsets.only(right: 10),
-                        decoration: BoxDecoration(
+                        width: 34, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                        height: 34, // ความสูงของพื้นที่แสดงหรือรูปภาพ
+                        alignment: Alignment.center, // ตำแหน่งวางเนื้อหาภายในพื้นที่ของ widget
+                        margin: const EdgeInsets.only(right: 10), // ระยะว่างด้านนอกระหว่าง widget กับบริเวณรอบข้าง
+                        decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                           color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(10), // ความโค้งของมุมกรอบ
                         ),
                         child: Text(
                           '${entry.key + 1}',
@@ -375,14 +388,15 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: MangaCard(
                           manga: entry.value,
                           accessToken: widget.user['access_token'].toString(),
-                          onTap: () => _openManga(entry.value),
+                          onTap: () => _openManga(entry.value), // ทำงานเมื่อแตะการ์ดหรือรายการนี้
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 24), // เว้นระยะห่างแนวตั้ง 24 พิกเซล
               ],
+              // ช่องค้นหาและตัวกรอง Visibility ภายในหน้ามีเฉพาะของฉัน
               if (!_showPublic) ...[
                 Text(
                   'ค้นหาและกรองรายการ',
@@ -390,60 +404,60 @@ class _DashboardPageState extends State<DashboardPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                 Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.all(16), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+                  decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                     color: colors.surface,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
                     border: Border.all(color: colors.outlineVariant),
                   ),
                   child: Column(
                     children: [
                       TextField(
-                        controller: _searchController,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว',
-                          prefixIcon: const Icon(Icons.search_rounded),
+                        controller: _searchController, // ผูกช่องค้นหากับข้อความที่ใช้กรองรายการ
+                        onChanged: (_) => setState(() {}), // ทำงานทันทีเมื่อค่าช่องหรือรายการเลือกเปลี่ยน
+                        decoration: InputDecoration( // กำหนดข้อความและรูปแบบขอบของช่องกรอก
+                          hintText: 'ค้นหาชื่อเรื่อง ผู้แต่ง หรือแนว', // ข้อความตัวอย่างก่อนผู้ใช้พิมพ์
+                          prefixIcon: const Icon(Icons.search_rounded), // ไอคอนด้านหน้าของช่องกรอก
                           suffixIcon: _searchController.text.isEmpty
                               ? null
                               : IconButton(
                                   tooltip: 'ล้างคำค้นหา',
-                                  onPressed: () {
+                                  onPressed: () { // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
                                     _searchController.clear();
                                     setState(() {});
                                   },
                                   icon: const Icon(Icons.close),
                                 ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12), // ความโค้งของมุมกรอบ
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                       DropdownButtonFormField<String>(
-                        value: _selectedStatus,
-                        decoration: InputDecoration(
-                          labelText: 'Visibility',
-                          prefixIcon: const Icon(Icons.filter_list_rounded),
+                        value: _selectedStatus, // ค่า Visibility ที่เลือกกรองอยู่
+                        decoration: InputDecoration( // กำหนดข้อความและรูปแบบขอบของช่องกรอก
+                          labelText: 'Visibility', // ข้อความชื่อช่องที่แสดงในฟอร์ม
+                          prefixIcon: const Icon(Icons.filter_list_rounded), // ไอคอนด้านหน้าของช่องกรอก
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12), // ความโค้งของมุมกรอบ
                           ),
                         ),
                         items: [
                           const DropdownMenuItem(
-                            value: 'All',
+                            value: 'All', // ตัวเลือกให้แสดงทุกสถานะ
                             child: Text('All'),
                           ),
                           ..._statuses.map(
                             (status) => DropdownMenuItem(
-                              value: status,
+                              value: status, // ส่งรหัส private/public ของตัวเลือกนี้กลับเมื่อเลือก
                               child: Text(mangaVisibilityLabel(status)),
                             ),
                           ),
                         ],
-                        onChanged: (value) {
+                        onChanged: (value) { // ทำงานทันทีเมื่อค่าช่องหรือรายการเลือกเปลี่ยน
                           if (value != null) {
                             setState(() => _selectedStatus = value);
                           }
@@ -453,10 +467,11 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 28),
+              const SizedBox(height: 28), // เว้นระยะห่างแนวตั้ง 28 พิกเซล
+              // เลือกแสดงตัวโหลด ข้อผิดพลาด ข้อความว่าง หรือการ์ด Manga
               if (_isLoading)
                 const Padding(
-                  padding: EdgeInsets.all(36),
+                  padding: EdgeInsets.all(36), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
                   child: Center(child: CircularProgressIndicator()),
                 )
               else if (_loadError != null)
@@ -486,12 +501,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                 ..._visibleManga.map(
                   (manga) => MangaCard(
                     manga: manga,
                     accessToken: widget.user['access_token'].toString(),
-                    onTap: () => _openManga(manga),
+                    onTap: () => _openManga(manga), // ทำงานเมื่อแตะการ์ดหรือรายการนี้
                   ),
                 ),
               ],
@@ -502,6 +517,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  // เปิดหน้ารายละเอียดและโหลดรายการใหม่เมื่อกลับมา เพื่อเห็นข้อมูลที่แก้ไข
   Future<void> _openManga(Map<String, dynamic> manga) async {
     await Navigator.push<void>(
       context,
@@ -517,6 +533,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+/// หัวเรื่องของ Dashboard ปรับข้อความตามแท็บของฉันหรือสาธารณะ
 class _DashboardHeader extends StatelessWidget {
   const _DashboardHeader({required this.username, required this.showPublic});
 
@@ -529,31 +546,31 @@ class _DashboardHeader extends StatelessWidget {
     final colors = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(24), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+      decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [colors.primaryContainer, colors.secondaryContainer],
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24), // ความโค้งของมุมกรอบ
       ),
       child: Row(
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
               children: [
                 Text(
                   'สวัสดี, $username',
-                  maxLines: 2,
+                  maxLines: 2, // แสดงข้อความได้สูงสุดสองบรรทัด
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: colors.onPrimaryContainer,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
                 Text(
                   showPublic ? 'สำรวจ Manga สาธารณะ' : 'ชั้นหนังสือของคุณ',
                   style: theme.textTheme.bodyLarge?.copyWith(
@@ -563,7 +580,7 @@ class _DashboardHeader extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 12), // เว้นระยะห่างแนวนอน 12 พิกเซล
           Icon(
             Icons.auto_stories_rounded,
             size: 48,
@@ -575,6 +592,7 @@ class _DashboardHeader extends StatelessWidget {
   }
 }
 
+/// ช่องตัวเลขสรุปที่ใช้ซ้ำบน Dashboard
 class _SummaryTile extends StatelessWidget {
   const _SummaryTile({
     required this.label,
@@ -593,25 +611,25 @@ class _SummaryTile extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(18), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+      decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
         color: colors.surface,
         border: Border.all(color: colors.outlineVariant),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
         children: [
           Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
+            width: 40, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+            height: 40, // ความสูงของพื้นที่แสดงหรือรูปภาพ
+            decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
               color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12), // ความโค้งของมุมกรอบ
             ),
             child: Icon(icon, color: color),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 14), // เว้นระยะห่างแนวตั้ง 14 พิกเซล
           Text(
             value,
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -621,7 +639,7 @@ class _SummaryTile extends StatelessWidget {
           ),
           Text(
             label,
-            maxLines: 1,
+            maxLines: 1, // แสดงข้อความเพียงบรรทัดเดียว
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colors.onSurfaceVariant,
@@ -633,6 +651,7 @@ class _SummaryTile extends StatelessWidget {
   }
 }
 
+/// แสดงข้อความขณะไม่มีข้อมูล โหลดผิดพลาด หรือให้ผู้ใช้ลองใหม่
 class _MessageState extends StatelessWidget {
   const _MessageState({
     required this.icon,
@@ -652,17 +671,17 @@ class _MessageState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
-      decoration: BoxDecoration(
+      width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+      decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
         color: colors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
         border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         children: [
           Icon(icon, size: 44, color: colors.primary),
-          const SizedBox(height: 16),
+          const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
           Text(
             title,
             textAlign: TextAlign.center,
@@ -670,14 +689,14 @@ class _MessageState extends StatelessWidget {
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 6), // เว้นระยะห่างแนวตั้ง 6 พิกเซล
           Text(
             message,
             textAlign: TextAlign.center,
             style: TextStyle(color: colors.onSurfaceVariant),
           ),
           if (actionLabel != null) ...[
-            const SizedBox(height: 18),
+            const SizedBox(height: 18), // เว้นระยะห่างแนวตั้ง 18 พิกเซล
             OutlinedButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],

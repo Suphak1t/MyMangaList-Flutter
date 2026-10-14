@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+/// ข้อมูลที่หน้าจัดการตอนจะใช้สร้าง/แก้ตอนและอัปโหลดไฟล์
 class ChapterFormResult {
   const ChapterFormResult(
     this.number,
@@ -17,6 +18,7 @@ class ChapterFormResult {
   final List<PlatformFile> files;
 }
 
+/// ฟอร์มเพิ่มหรือแก้ไขตอน; nextNumber เสนอเลขตอนใหม่โดยอัตโนมัติ
 class ChapterDialog extends StatefulWidget {
   const ChapterDialog({super.key, required this.nextNumber, this.chapter});
 
@@ -28,6 +30,7 @@ class ChapterDialog extends StatefulWidget {
 }
 
 class _ChapterDialogState extends State<ChapterDialog> {
+  // State เก็บเลขตอน ชื่อตอน สถานะเผยแพร่ ประเภทเนื้อหา และไฟล์
   final _formKey = GlobalKey<FormState>();
   final _number = TextEditingController();
   final _title = TextEditingController();
@@ -39,6 +42,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
   @override
   void initState() {
     super.initState();
+    // เมื่อแก้ไขตอน ให้นำเลข ชื่อ และการเผยแพร่เดิมมาใส่ในฟอร์ม
     final chapter = widget.chapter;
     _number.text = '${chapter?['chapter_number'] ?? widget.nextNumber}';
     _title.text = (chapter?['title'] ?? '').toString();
@@ -52,16 +56,18 @@ class _ChapterDialogState extends State<ChapterDialog> {
     super.dispose();
   }
 
+  // เลือก PDF หนึ่งไฟล์หรือภาพหลายไฟล์ แล้วตรวจจำนวน ชื่อซ้ำ และขนาด
   Future<void> _pickFiles(String type) async {
     final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
+      type: FileType.custom, // ใช้ชุดนามสกุลไฟล์ที่ระบุเอง
       allowedExtensions: type == 'pdf'
           ? ['pdf']
           : ['jpg', 'jpeg', 'png', 'webp'],
-      allowMultiple: type == 'images',
-      withData: false,
+      allowMultiple: type == 'images', // อนุญาตเลือกหลายไฟล์สำหรับชุดภาพ
+      withData: false, // ไม่โหลด bytes ทั้งไฟล์เข้าหน่วยความจำตอนเลือก
     );
     if (picked == null || picked.files.isEmpty || !mounted) return;
+    // การเพิ่มภาพรอบถัดไปรวมกับภาพเดิมและเรียงตามชื่อไฟล์
     final files = [
       if (type == 'images' && _contentType == 'images') ..._files,
       ...picked.files,
@@ -69,6 +75,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
     final maxFileSize = (type == 'pdf' ? 20 : 5) * 1024 * 1024;
     final totalSize = files.fold<int>(0, (total, file) => total + file.size);
     final names = files.map((file) => file.name.toLowerCase()).toSet();
+    // รวมเงื่อนไขตรวจไฟล์เพื่อแสดงเหตุผลเดียวที่ต้องแก้ก่อนบันทึก
     final error = files.any((file) => file.path == null)
         ? 'อ่านไฟล์ที่เลือกไม่ได้'
         : files.length > (type == 'pdf' ? 1 : 15)
@@ -91,6 +98,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
     });
   }
 
+  // นำไฟล์ที่ไม่ต้องการออกจากชุดที่เลือกก่อนอัปโหลด
   void _removeFile(int index) {
     setState(() {
       _files.removeAt(index);
@@ -99,6 +107,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
     });
   }
 
+  // ตอนใหม่ต้องมีไฟล์; ตอนเดิมแก้ข้อมูลได้โดยไม่ต้องเลือกไฟล์ใหม่
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     if (widget.chapter == null && _files.isEmpty) {
@@ -124,12 +133,12 @@ class _ChapterDialogState extends State<ChapterDialog> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final fieldBorder = OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
       borderSide: BorderSide.none,
     );
     final fieldStyle = theme.textTheme.bodyLarge;
     final helperStyle = theme.textTheme.bodyMedium?.copyWith(
-      height: 1.45,
+      height: 1.45, // ความสูงบรรทัดของตัวอักษรเป็น 1.45 เท่า
       color: colors.onSurfaceVariant,
     );
 
@@ -137,23 +146,23 @@ class _ChapterDialogState extends State<ChapterDialog> {
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       titlePadding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 8), // ระยะว่างภายในส่วนเนื้อหาของ widget
       actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       title: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.all(18), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+        decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [colors.primaryContainer, colors.secondaryContainer],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20), // ความโค้งของมุมกรอบ
         ),
         child: Row(
           children: [
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                 children: [
                   Text(
                     widget.chapter == null ? 'เพิ่มตอน' : 'แก้ไขตอน',
@@ -162,7 +171,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
                       color: colors.onPrimaryContainer,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 4), // เว้นระยะห่างแนวตั้ง 4 พิกเซล
                   Text(
                     'รายละเอียดและไฟล์ของตอน',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -172,7 +181,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 8), // เว้นระยะห่างแนวนอน 8 พิกเซล
             Icon(
               widget.chapter == null
                   ? Icons.add_circle_outline_rounded
@@ -184,13 +193,13 @@ class _ChapterDialogState extends State<ChapterDialog> {
         ),
       ),
       content: SizedBox(
-        width: 460,
+        width: 460, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min, // กำหนดให้ Row หรือ Column ใช้พื้นที่ตามเนื้อหาหรือเต็มแกน
+              crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
               children: [
                 Text(
                   'ข้อมูลตอน',
@@ -198,14 +207,14 @@ class _ChapterDialogState extends State<ChapterDialog> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                 TextFormField(
-                  controller: _number,
-                  keyboardType: TextInputType.number,
+                  controller: _number, // เก็บเลขตอนที่กรอก
+                  keyboardType: TextInputType.number, // เลือกชนิดแป้นพิมพ์ให้เหมาะกับข้อมูล
                   style: fieldStyle,
-                  decoration: InputDecoration(
-                    labelText: 'เลขตอน *',
-                    prefixIcon: const Icon(Icons.format_list_numbered_rounded),
+                  decoration: InputDecoration( // กำหนดข้อความและรูปแบบขอบของช่องกรอก
+                    labelText: 'เลขตอน *', // ข้อความชื่อช่องที่แสดงในฟอร์ม
+                    prefixIcon: const Icon(Icons.format_list_numbered_rounded), // ไอคอนด้านหน้าของช่องกรอก
                     filled: true,
                     fillColor: colors.surfaceContainerLow,
                     border: fieldBorder,
@@ -214,21 +223,21 @@ class _ChapterDialogState extends State<ChapterDialog> {
                       borderSide: BorderSide(color: colors.primary, width: 1.5),
                     ),
                   ),
-                  validator: (value) {
+                  validator: (value) { // ตรวจค่าที่กรอกและคืนข้อความผิดพลาดเมื่อไม่ผ่าน
                     final number = int.tryParse(value?.trim() ?? '');
                     return number == null || number < 1
                         ? 'กรุณากรอกเลขตอนตั้งแต่ 1'
                         : null;
                   },
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 14), // เว้นระยะห่างแนวตั้ง 14 พิกเซล
                 TextFormField(
-                  controller: _title,
-                  maxLength: 255,
+                  controller: _title, // เก็บชื่อตอนที่กรอก
+                  maxLength: 255, // จำกัดจำนวนตัวอักษรที่พิมพ์ได้
                   style: fieldStyle,
-                  decoration: InputDecoration(
-                    labelText: 'ชื่อตอน (ไม่บังคับ)',
-                    prefixIcon: const Icon(Icons.title_rounded),
+                  decoration: InputDecoration( // กำหนดข้อความและรูปแบบขอบของช่องกรอก
+                    labelText: 'ชื่อตอน (ไม่บังคับ)', // ข้อความชื่อช่องที่แสดงในฟอร์ม
+                    prefixIcon: const Icon(Icons.title_rounded), // ไอคอนด้านหน้าของช่องกรอก
                     filled: true,
                     fillColor: colors.surfaceContainerLow,
                     border: fieldBorder,
@@ -238,12 +247,12 @@ class _ChapterDialogState extends State<ChapterDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 4), // เว้นระยะห่างแนวตั้ง 4 พิกเซล
                 Material(
                   color: colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
                   child: SwitchListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14), // ระยะว่างภายในส่วนเนื้อหาของ widget
                     title: Text(
                       'เผยแพร่ตอน',
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -254,37 +263,37 @@ class _ChapterDialogState extends State<ChapterDialog> {
                       'เรื่องสาธารณะจึงจะให้ผู้อื่นอ่านได้',
                       style: helperStyle,
                     ),
-                    value: _published,
-                    onChanged: (value) => setState(() => _published = value),
+                    value: _published, // เปิดสวิตช์เมื่อกำหนดให้เผยแพร่ตอนนี้
+                    onChanged: (value) => setState(() => _published = value), // ทำงานทันทีเมื่อค่าช่องหรือรายการเลือกเปลี่ยน
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 24), // เว้นระยะห่างแนวตั้ง 24 พิกเซล
                 Divider(color: colors.outlineVariant),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
                 Text(
                   'ไฟล์ของตอน',
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                 Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
+                  width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                  padding: const EdgeInsets.all(14), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+                  decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                     color: colors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                     children: [
                       Text('PDF 1 ไฟล์ ไม่เกิน 20 MB', style: helperStyle),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 4), // เว้นระยะห่างแนวตั้ง 4 พิกเซล
                       Text(
                         'หรือภาพ JPG, PNG, WebP สูงสุด 15 ไฟล์ต่อตอน เลือกเพิ่มได้หลายรอบ (ไม่เกิน 5 MB ต่อภาพ และรวมไม่เกิน 30 MB)',
                         style: helperStyle,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 4), // เว้นระยะห่างแนวตั้ง 4 พิกเซล
                       Text(
                         'ตั้งชื่อภาพตามลำดับ เช่น 001.png, 002.png',
                         style: helperStyle,
@@ -292,13 +301,13 @@ class _ChapterDialogState extends State<ChapterDialog> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16), // เว้นระยะห่างแนวตั้ง 16 พิกเซล
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 8, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
+                  runSpacing: 8, // ระยะห่างระหว่างบรรทัดเมื่อ Wrap ขึ้นบรรทัดใหม่
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => _pickFiles('pdf'),
+                      onPressed: () => _pickFiles('pdf'), // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
                       icon: const Icon(Icons.picture_as_pdf_outlined, size: 20),
                       label: const Text('เลือก PDF'),
                     ),
@@ -316,16 +325,16 @@ class _ChapterDialogState extends State<ChapterDialog> {
                   ],
                 ),
                 if (_files.isNotEmpty) ...[
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 14), // เว้นระยะห่างแนวตั้ง 14 พิกเซล
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
+                    width: double.infinity, // ความกว้างของพื้นที่แสดงหรือรูปภาพ
+                    padding: const EdgeInsets.all(14), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
+                    decoration: BoxDecoration( // กำหนดสี ขอบ หรือเงาของกล่องนี้
                       color: colors.primaryContainer.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14), // ความโค้งของมุมกรอบ
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                       children: [
                         Text(
                           _contentType == 'images'
@@ -335,10 +344,10 @@ class _ChapterDialogState extends State<ChapterDialog> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
+                          spacing: 6, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
+                          runSpacing: 6, // ระยะห่างระหว่างบรรทัดเมื่อ Wrap ขึ้นบรรทัดใหม่
                           children: [
                             for (var index = 0; index < _files.length; index++)
                               InputChip(
@@ -351,7 +360,7 @@ class _ChapterDialogState extends State<ChapterDialog> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                onDeleted: () => _removeFile(index),
+                                onDeleted: () => _removeFile(index), // ลบชิปตัวกรองนี้เมื่อกดเครื่องหมายปิด
                                 deleteButtonTooltipMessage: 'ลบภาพที่เลือก',
                               ),
                           ],
@@ -361,11 +370,11 @@ class _ChapterDialogState extends State<ChapterDialog> {
                   ),
                 ],
                 if (widget.chapter != null && _files.isEmpty) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 12), // เว้นระยะห่างแนวตั้ง 12 พิกเซล
                   Text('ไม่เลือกไฟล์ใหม่ = ใช้ไฟล์เดิม', style: helperStyle),
                 ],
                 if (_fileError != null) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 10), // เว้นระยะห่างแนวตั้ง 10 พิกเซล
                   Text(
                     _fileError!,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -380,14 +389,14 @@ class _ChapterDialogState extends State<ChapterDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context), // ปิดหน้าหรือ dialog และส่งผลกลับ
           child: const Text(
             'ยกเลิก',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
         ),
         FilledButton.icon(
-          onPressed: _submit,
+          onPressed: _submit, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
           icon: const Icon(Icons.save_outlined, size: 18),
           label: const Text(
             'บันทึก',

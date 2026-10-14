@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'config.dart';
 import 'manga_detail.dart';
 
+/// แผงผู้ดูแลสำหรับบัญชีและรีพอร์ต; API ยังตรวจ role จากฐานข้อมูลเอง
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key, required this.user});
 
@@ -16,6 +17,7 @@ class AdminDashboardPage extends StatefulWidget {
 }
 
 class _AdminDashboardPageState extends State<AdminDashboardPage> {
+  // State แยกข้อมูลผู้ใช้ รีพอร์ต ตัวกรอง และสถานะของแต่ละแท็บ
   final _search = TextEditingController();
   List<Map<String, dynamic>> _users = [];
   List<Map<String, dynamic>> _reports = [];
@@ -26,6 +28,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
   String? _usersError;
   String? _reportsError;
 
+  // ส่วนหัวร่วมของ admin API พร้อม Bearer token
   Map<String, String> get _headers => {
     'Content-Type': 'application/json; charset=UTF-8',
     'Authorization': 'Bearer ${widget.user['access_token']}',
@@ -43,15 +46,17 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     super.dispose();
   }
 
+  // รีโหลดทั้งแท็บผู้ใช้และแท็บรีพอร์ตหลังการจัดการ
   void _refresh() {
     _loadUsers();
     _loadReports();
   }
 
+  // ตัวช่วย GET ที่ตรวจ statusCode และ success ก่อนคืน JSON
   Future<Map<String, dynamic>> _get(String endpoint) async {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
-      headers: _headers,
+      headers: _headers, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode != 200 || data['success'] != true) {
@@ -60,14 +65,15 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return data;
   }
 
+  // ตัวช่วย POST คำสั่งผู้ดูแลในรูป JSON
   Future<Map<String, dynamic>> _post(
     String endpoint,
     Map<String, dynamic> body,
   ) async {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/$endpoint'),
-      headers: _headers,
-      body: jsonEncode(body),
+      headers: _headers, // ส่ง HTTP headers เช่น Bearer token ไปกับคำขอ
+      body: jsonEncode(body), // แปลงข้อมูลเป็น JSON สำหรับส่งให้ PHP API
     );
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode != 200 || data['success'] != true) {
@@ -76,6 +82,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return data;
   }
 
+  // โหลดบัญชีพร้อมสถิติ Manga/คอมเมนต์และสถานะพักบัญชี
   Future<void> _loadUsers() async {
     if (mounted) setState(() => _loadingUsers = true);
     try {
@@ -98,6 +105,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // โหลดรายการแจ้งปัญหาและผลการพิจารณา
   Future<void> _loadReports() async {
     if (mounted) setState(() => _loadingReports = true);
     try {
@@ -121,6 +129,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // แสดงผลสำเร็จหรือข้อผิดพลาดเป็น SnackBar
   void _message(Object message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -130,6 +139,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
+  // กล่องยืนยันก่อนคำสั่งที่เปลี่ยนข้อมูลผู้ใช้หรือ Manga
   Future<bool> _confirm(String title, String detail) async {
     final answer = await showDialog<bool>(
       context: context,
@@ -138,11 +148,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         content: Text(detail),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context, false), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ยกเลิก'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, true), // ปิดหน้าหรือ dialog และส่งผลกลับ
             child: const Text('ยืนยัน'),
           ),
         ],
@@ -151,6 +161,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return answer == true;
   }
 
+  // พักหรือคืนบัญชีตามสถานะปัจจุบันและโหลดข้อมูลใหม่
   Future<void> _setSuspended(Map<String, dynamic> user) async {
     final suspend = user['is_suspended'] != true;
     final name = user['username'].toString();
@@ -177,6 +188,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // ลบบัญชีหลังยืนยัน; PHP ตรวจเงื่อนไขการลบอีกครั้ง
   Future<void> _deleteUser(Map<String, dynamic> user) async {
     if (!await _confirm(
       'ลบผู้ใช้ ${user['username']}',
@@ -198,6 +210,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // แปลงรหัส action ของรีพอร์ตเป็นชื่อที่อ่านง่ายในกล่องยืนยัน
   String _actionName(String action) => switch (action) {
     'dismissed' => 'ไม่พบปัญหา',
     'hidden' => 'ซ่อน Manga',
@@ -206,6 +219,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     _ => 'รอตรวจ',
   };
 
+  // ส่งผลพิจารณารีพอร์ต: ปิด ซ่อน ลบเรื่อง หรือพักผู้ลง
   Future<void> _review(Map<String, dynamic> report, String action) async {
     final name = _actionName(action);
     if (!await _confirm(
@@ -229,6 +243,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // คืนการแสดงเรื่องที่ถูกซ่อนหลังผู้ดูแลยืนยัน
   Future<void> _restoreManga(Map<String, dynamic> report) async {
     if (!await _confirm(
       'คืนการแสดง Manga',
@@ -251,6 +266,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     }
   }
 
+  // แปลงข้อมูลในรีพอร์ตเป็น Manga ที่เปิดดูรายละเอียดได้
   void _inspectReport(Map<String, dynamic> report) {
     final mangaId = report['manga_id'];
     if (mangaId == null) return;
@@ -286,12 +302,13 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
+  // สร้างรายการผู้ใช้ พร้อมช่องค้นหาและเมนูจัดการแต่ละบัญชี
   Widget _usersView() {
     if (_loadingUsers) return const Center(child: CircularProgressIndicator());
     if (_usersError != null) {
       return Center(
         child: TextButton(
-          onPressed: _loadUsers,
+          onPressed: _loadUsers, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
           child: Text('$_usersError — ลองอีกครั้ง'),
         ),
       );
@@ -305,25 +322,25 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
           child: TextField(
-            controller: _search,
-            onChanged: (_) => setState(() {}),
+            controller: _search, // เก็บคำค้นหาผู้ใช้ใน Admin
+            onChanged: (_) => setState(() {}), // ทำงานทันทีเมื่อค่าช่องหรือรายการเลือกเปลี่ยน
             decoration: const InputDecoration(
-              labelText: 'ค้นหาผู้ใช้',
-              prefixIcon: Icon(Icons.search),
+              labelText: 'ค้นหาผู้ใช้', // ข้อความชื่อช่องที่แสดงในฟอร์ม
+              prefixIcon: Icon(Icons.search), // ไอคอนด้านหน้าของช่องกรอก
               border: OutlineInputBorder(),
             ),
           ),
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: users.length,
-            itemBuilder: (context, index) {
+            itemCount: users.length, // จำนวนรายการที่ ListView หรือ PageView ต้องสร้าง
+            itemBuilder: (context, index) { // สร้าง widget ของแต่ละรายการตาม index
               final user = users[index];
               final isAdmin = user['role'] == 'admin';
               return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), // ระยะว่างด้านนอกระหว่าง widget กับบริเวณรอบข้าง
                 child: ListTile(
                   title: Text(user['username'].toString()),
                   subtitle: Text(
@@ -343,7 +360,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               : _setSuspended(user),
                           itemBuilder: (context) => [
                             PopupMenuItem(
-                              value: 'suspend',
+                              value: 'suspend', // รหัสเมนูสำหรับพักหรือคืนสถานะบัญชี
                               child: Text(
                                 user['is_suspended'] == true
                                     ? 'ปลดพักบัญชี'
@@ -351,7 +368,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               ),
                             ),
                             const PopupMenuItem(
-                              value: 'delete',
+                              value: 'delete', // รหัสเมนูสำหรับลบบัญชี
                               child: Text('ลบผู้ใช้'),
                             ),
                           ],
@@ -365,6 +382,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     );
   }
 
+  // แสดงคิวรีพอร์ตและปุ่ม action ตามสถานะของแต่ละรายการ
   Widget _reportsView() {
     if (_loadingReports) {
       return const Center(child: CircularProgressIndicator());
@@ -372,7 +390,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     if (_reportsError != null) {
       return Center(
         child: TextButton(
-          onPressed: _loadReports,
+          onPressed: _loadReports, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
           child: Text('$_reportsError — ลองอีกครั้ง'),
         ),
       );
@@ -383,19 +401,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
           child: Wrap(
-            spacing: 8,
+            spacing: 8, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
             children: [
               ChoiceChip(
                 label: const Text('รอตรวจ'),
-                selected: _showPending,
-                onSelected: (_) => setState(() => _showPending = true),
+                selected: _showPending, // กำหนดว่าชิปนี้อยู่ในสถานะเลือกหรือไม่
+                onSelected: (_) => setState(() => _showPending = true), // ทำงานเมื่อเลือกชิปนี้
               ),
               ChoiceChip(
                 label: const Text('ดำเนินการแล้ว'),
-                selected: !_showPending,
-                onSelected: (_) => setState(() => _showPending = false),
+                selected: !_showPending, // กำหนดว่าชิปนี้อยู่ในสถานะเลือกหรือไม่
+                onSelected: (_) => setState(() => _showPending = false), // ทำงานเมื่อเลือกชิปนี้
               ),
             ],
           ),
@@ -404,19 +422,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           child: reports.isEmpty
               ? const Center(child: Text('ไม่มีรีพอร์ตในรายการนี้'))
               : ListView.builder(
-                  itemCount: reports.length,
-                  itemBuilder: (context, index) {
+                  itemCount: reports.length, // จำนวนรายการที่ ListView หรือ PageView ต้องสร้าง
+                  itemBuilder: (context, index) { // สร้าง widget ของแต่ละรายการตาม index
                     final report = reports[index];
                     final pending = report['status'] == 'pending';
                     return Card(
-                      margin: const EdgeInsets.symmetric(
+                      margin: const EdgeInsets.symmetric( // ระยะว่างด้านนอกระหว่าง widget กับบริเวณรอบข้าง
                         horizontal: 12,
                         vertical: 4,
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(14), // ระยะว่างด้านในระหว่างขอบกับเนื้อหา
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start, // จัดแนวลูกตามแกนขวางของ Row หรือ Column
                           children: [
                             Text(
                               report['manga_title'].toString(),
@@ -426,18 +444,18 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                               'ผู้อัปโหลด: ${report['uploader_username']} · ผู้รีพอร์ต: ${report['reporter_username']}',
                             ),
                             Text('วันที่: ${report['created_at']}'),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
                             Text(report['reason'].toString()),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 8), // เว้นระยะห่างแนวตั้ง 8 พิกเซล
                             if (report['manga_id'] != null)
                               OutlinedButton.icon(
-                                onPressed: () => _inspectReport(report),
+                                onPressed: () => _inspectReport(report), // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
                                 icon: const Icon(Icons.menu_book_outlined),
                                 label: const Text('ดูเรื่อง'),
                               ),
                             if (pending)
                               Wrap(
-                                spacing: 8,
+                                spacing: 8, // ระยะห่างระหว่าง widget ที่อยู่บรรทัดเดียวกัน
                                 children: [
                                   OutlinedButton(
                                     onPressed: _busy
@@ -508,7 +526,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
         actions: [
           IconButton(
             tooltip: 'โหลดข้อมูลใหม่',
-            onPressed: _refresh,
+            onPressed: _refresh, // เรียก callback นี้เมื่อผู้ใช้กดปุ่ม
             icon: const Icon(Icons.refresh),
           ),
         ],
